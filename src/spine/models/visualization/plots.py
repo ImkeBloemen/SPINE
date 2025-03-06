@@ -1,16 +1,15 @@
-import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-plt.rcParams["font.family"] = "Times New Roman"
+plt.rcParams['font.family'] = 'Times New Roman'
 import random
 from sklearn.neighbors import KDTree
 import matplotlib.cm as cm
 import os
 import matplotlib.colors as mcolors
 from sklearn.decomposition import PCA
-import math
-from VAE_DBS.utils.utils import rotate_and_flip_points
+
+# Function to generate a scatterplot matrix
 
 def scatterplot_matrix(data, features=None, hue=None, save_path=None, figsize=(12, 12), random_subset_size=None, seed=None):
     """
@@ -32,42 +31,33 @@ def scatterplot_matrix(data, features=None, hue=None, save_path=None, figsize=(1
     if features is None:
         features = data.columns.tolist()
     
-    # If random_subset_size is specified, select a random subset of features
+    # Randomly select a subset of features if requested
     if random_subset_size is not None:
         if seed is not None:
             random.seed(seed)
         features = random.sample(features, min(random_subset_size, len(features)))
         print(f"Randomly selected features: {features}")
 
+    # Check for valid hue column
     if hue and hue not in data.columns:
         raise ValueError(f"The specified hue column '{hue}' does not exist in the data.")
     if hue and data[hue].isna().any():
         raise ValueError(f"The hue column '{hue}' contains NaN values. Please clean or drop them.")
     
-    # Set the style and font
-    sns.set(style="ticks", font="Times New Roman")
-    
-    # Create the pairplot
+    sns.set(style='ticks', font='Times New Roman')
     pairplot = sns.pairplot(
         data[features],
-        hue=hue if hue else None,  # Color by hue column
-        diag_kind="kde",  # Kernel density plot for diagonal
-        corner=True,      # Only show lower triangle of plots
-        palette="tab20",  # Use the tab10 color palette
-        plot_kws={"alpha": 0.7},  # Adjust transparency
+        hue=hue if hue else None,
+        diag_kind='kde',
+        corner=True,
+        palette='tab20',
+        plot_kws={'alpha': 0.7},
     )
-    
-    # Customize the appearance
     pairplot.fig.set_size_inches(figsize)
-    pairplot.fig.subplots_adjust(top=0.92, hspace=0.5, wspace=0.5)  # Better spacing
-    pairplot.fig.suptitle(
-        "Scatterplot Matrix",
-        fontsize=25,
-        fontweight='bold',
-        ha='center'
-    )
+    pairplot.fig.subplots_adjust(top=0.92, hspace=0.5, wspace=0.5)
+    pairplot.fig.suptitle('Scatterplot Matrix', fontsize=25, fontweight='bold', ha='center')
 
-    # Customize axis labels
+    # Customize axis labels and title fonts
     for ax in pairplot.axes.flatten():
         if ax is not None:
             ax.title.set_fontsize(25)
@@ -77,16 +67,13 @@ def scatterplot_matrix(data, features=None, hue=None, save_path=None, figsize=(1
             ax.tick_params(labelsize=16)
 
     plt.tight_layout()
-    # Save the plot if save_path is provided
     if save_path:
-        pairplot.fig.savefig(os.path.join(save_path, 'scatterplot'), dpi=300, bbox_inches="tight")
+        pairplot.fig.savefig(os.path.join(save_path, 'scatterplot'), dpi=300, bbox_inches='tight')
         print(f"Scatterplot matrix saved to {save_path}")
-    
-    # Show the plot
     plt.show()
 
-
-def calculate_distances_to_same_class(grid_points, predictions, training_points, training_labels):
+def calculate_distances_to_same_class(grid_points: np.ndarray, predictions: np.ndarray, 
+                                      training_points: np.ndarray, training_labels: np.ndarray) -> np.ndarray:
     """
     Calculate the distance of each pixel point (grid point) to the nearest training point of the same predicted class.
 
@@ -120,16 +107,21 @@ def calculate_distances_to_same_class(grid_points, predictions, training_points,
             class_distances, _ = kdtree.query(class_grid_points, k=1)
             distances[class_mask] = class_distances.flatten()  # Assign flattened distances
 
-
     return distances
 
-def plot_distance_grid(distance_grid, version, training_points, grid_points, grid_size, path=None):
+def plot_distance_grid(distance_grid: np.ndarray, version: int, 
+                       training_points: np.ndarray, grid_points: np.ndarray, 
+                       grid_size: int, path: str = None) -> None:
     """
     Visualize the grid colored by distances to the nearest training point of the same class.
 
     Parameters:
         distance_grid (np.ndarray): Grid of distances.
         version (int): Version for saving the plot.
+        training_points (np.ndarray): Original training points in high-dimensional space.
+        grid_points (np.ndarray): Grid points in high-dimensional space.
+        grid_size (int): Size of the grid for visualization.
+        path (str, optional): Path to save the plot. Defaults to None.
 
     Returns:
         None
@@ -155,14 +147,16 @@ def plot_distance_grid(distance_grid, version, training_points, grid_points, gri
         alpha=0.5,
     )
 
-    # plt.legend(loc='upper right', fontsize=12, title="Legend")
     plt.axis('off')
 
     # Save the plot
-    save_path = os.path.join(path, f'{version}_distance_plot.png')
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=300, bbox_inches="tight", pad_inches=0.1)
-    print(f"Distance plot saved as {save_path}")
+    if path is not None:
+        os.makedirs(path, exist_ok=True)
+        save_path = os.path.join(path, f'{version}_distance_plot.png')
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=300, bbox_inches="tight", pad_inches=0.1)
+        print(f"Distance plot saved as {save_path}")
+
 
 def plot_gradient_grid(image, version, intermediate_points_2D, grid_points, grid_size, gradient_values, scaler_2D, path):
     """
@@ -173,11 +167,12 @@ def plot_gradient_grid(image, version, intermediate_points_2D, grid_points, grid
     Parameters:
         image (np.ndarray or str): Background image or path to it.
         version (int): Version for saving the plot.
-        original_points_2D (np.ndarray): Coordinates of original points, shape (n_original, 2).
         intermediate_points_2D (np.ndarray): Coordinates of intermediate points, shape (n_points, 2).
         grid_points (np.ndarray): The 2D positions corresponding to grid points, shape (m*n, 2).
         grid_size (tuple): The grid dimensions (m, n).
         gradient_values (np.ndarray): High-dimensional gradient values for each intermediate point, shape (n_points, n_features).
+        scaler_2D: Scaler for 2D data normalization.
+        path (str): Directory path to save the plot.
 
     Returns:
         None
@@ -212,21 +207,13 @@ def plot_gradient_grid(image, version, intermediate_points_2D, grid_points, grid
         img = image
 
     fig, ax = plt.subplots(figsize=(10, 10))
-
-    # Show the background image using the grid_points for extent
     ax.imshow(img)
 
-    # Plot intermediate gradient points with HSV-based RGB colors
-    # intermediate_points_2D = rotate_and_flip_points(intermediate_points_2D, grid_size)
+    # Plot intermediate gradient points
     intermediate_points_2D[:, 1] = grid_size - 1 - intermediate_points_2D[:, 1]
     scatter = ax.scatter(intermediate_points_2D[:, 0], intermediate_points_2D[:, 1], c=rgb, s=10, alpha=0.7, label='Gradient Points')
-    # Rotate the scatter by 180 degrees and flip it horizontally
-
-    # Create a colorbar for the magnitude of the gradient
-    # Compute gradient magnitude for the colorbar
     magnitude = np.sqrt(gX**2 + gY**2)
 
-    # Add a colorbar for gradient magnitude
     cbar = plt.colorbar(
         cm.ScalarMappable(norm=plt.Normalize(vmin=magnitude.min(), vmax=magnitude.max()), cmap='hsv'),
         ax=ax,
@@ -238,23 +225,20 @@ def plot_gradient_grid(image, version, intermediate_points_2D, grid_points, grid
     cbar.set_label("Gradient Magnitude (relative)", fontsize=18)
     cbar.ax.tick_params(labelsize=10)
 
-    # Add a title and labels
     ax.set_title("Gradient Points Overlay", fontsize=25, pad=20)
     ax.set_xlabel("Dimension 1", fontsize=18)
     ax.set_ylabel("Dimension 2", fontsize=18)
 
-    # Add a legend
     ax.legend(loc='upper right', fontsize=12, title="Legend")
 
-    # Remove axes ticks for a cleaner look
     ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
 
-    # Save the figure
     plt.tight_layout()
     save_path = os.path.join(path, f"gradient_points_overlay_{version}.png")
     plt.savefig(save_path, dpi=300, bbox_inches="tight", pad_inches=0.1)
     plt.show()
     plt.close()
+
 
 def normalize_to_grid(points, grid_points, grid_size):
     """

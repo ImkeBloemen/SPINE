@@ -19,10 +19,9 @@ def load_blobs(blob_name):
     blobs_df['target'] = blobs_y
     return blobs_df, blobs_y
 
-def load_dataset(outcome_name, dataset_name='adult_preprocessed'):
+def load_dataset(outcome_name, dataset_name):
         """Load and return the dataset."""
         dataset = pd.read_csv(f'../../../data/raw/{dataset_name}.csv')
-        # dataset = pd.read_csv(f'../../../experiment_input/deepview/mnist/train_test_{tt_number}/{dataset_name}.csv')
         target = dataset[outcome_name]
 
         return dataset, target
@@ -39,25 +38,25 @@ def split_dataset(dataset, target, test_size=0.2, random_state=0):
     
     return train_data, test_data, y_train, y_test
 
-def load_data_sdbm(outcome_name, data_path, tt_number):
-    X = np.load(f'../../../experiment_input/sdbm/mnist/train_test_{tt_number}/X_train.npy')
-    y = np.load(f'../../../experiment_input/sdbm/mnist/train_test_{tt_number}/y_train.npy')
+def load_data_sdbm(data_path, tt_number):
+    X = np.load(f'../../../data/experiment_input/sdbm/{data_path}/train_test_{tt_number}/X_train.npy')
+    y = np.load(f'../../../data/experiment_input/sdbm/{data_path}/train_test_{tt_number}/y_train.npy')
 
     return X, y
 
-def load_data_deepview(outcome_name, data_path, tt_number):
-    X = np.load(f'../../../experiment_input/deepview/cifar/train_test_{tt_number}/X_sub_{data_path}.npy')
-    y = np.load(f'../../../experiment_input/deepview/cifar/train_test_{tt_number}/y_sub_{data_path}.npy')
+def load_data_deepview(data_path, tt_number):
+    X = np.load(f'../../../data/experiment_input/deepview/{data_path}/train_test_{tt_number}/X_sub_{data_path}.npy')
+    y = np.load(f'../../../data/experiment_input/deepview/{data_path}/train_test_{tt_number}/y_sub_{data_path}.npy')
 
     return X, y
 
-def load_data_train_test(outcome_name, data_path, tt_number):
-    X = np.load(f'../../../experiment_input/lamp/{data_path}/train_test_{tt_number}/X_train.npy')
-    y = np.load(f'../../../experiment_input/lamp/{data_path}/train_test_{tt_number}/y_train.npy')
+def load_data_train_test(data_path, tt_number):
+    X = np.load(f'../../../data/experiment_input/{data_path}/train_test_{tt_number}/X_train.npy')
+    y = np.load(f'../../../data/experiment_input/{data_path}/train_test_{tt_number}/y_train.npy')
 
     return X, y
 
-def load_model_dice(backend, model_name='cancer_mlp_model', tt_number='', classifier_name='', model_format='h5', func='ohe-min-max', multi_class=False, comparison_method_name=None):
+def load_model_dice(backend, model_name, tt_number='', classifier_name='', model_format='h5', func='ohe-min-max', multi_class=False, comparison_method_name=None):
     """
     Load the pre-trained model for use with DiceML, ensuring compatibility with TensorFlow optimizers.
     
@@ -94,7 +93,6 @@ def load_model_dice(backend, model_name='cancer_mlp_model', tt_number='', classi
             return model
 
     # Set the model path based on the model name and format
-    print(comparison_method_name)
     if comparison_method_name == 'sdbm':
         #For SDBM
         model_path = f'../models/input_classifiers/{model_name}/{classifier_name}_{tt_number}.{model_format}'

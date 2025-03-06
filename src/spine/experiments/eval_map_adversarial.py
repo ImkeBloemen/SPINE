@@ -6,48 +6,9 @@ print(tf.config.list_physical_devices('GPU'))
 import os
 import numpy as np
 import pandas as pd
-import logging
-from copy import deepcopy
-from typing import List, Tuple, Dict, Callable
-import seaborn as sns
-import requests
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-from scipy.spatial.distance import euclidean
-from itertools import permutations, combinations
-from joblib import load
-import importlib
+from spine.data.load_data import *
+import spine.models.visualization.create_map_embedding as create_map_embedding
 
-import tensorflow as tf
-
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.metrics import accuracy_score
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.manifold import TSNE
-from sklearn.datasets import fetch_openml
-from sklearn.model_selection import train_test_split
-
-from sklearn.pipeline import Pipeline
-
-import VAE_DBS
-
-# from VAE_DBS.models import dice_gradients
-from VAE_DBS.models.dice_gradients import DiceCounterfactual
-from VAE_DBS.utils.utils import *
-from VAE_DBS.data.load_data import *
-from VAE_DBS.models.DiCE.dice_ml.utils.helpers import DataTransfomer
-import random
-import VAE_DBS.visualization.create_map_embedding as create_map_embedding
-import VAE_DBS.visualization.create_map_embedding_no_intermediate as create_map_embedding_no_intermediate
-import VAE_DBS.visualization.create_map.create_map_UMAP_test_no_intermediate as create_map_UMAP_test_no_intermediate
-# import ssnp_main.code.ssnp as ssnp
-import VAE_DBS.models.transformers.ssnp
-
-import skdim
 from sklearn.decomposition import PCA
 from scipy.stats import entropy
 
@@ -108,9 +69,7 @@ def compute_kl_divergence(X: np.ndarray, X_reference: np.ndarray, bins: int = 30
     kl_div = entropy(hist_X, hist_ref)
     return kl_div
 
-def run_experiment(model_path, tt_number, input_path, dataset_name, model_names, outcome_name, output_path_train_test, test_input_path):
-
-    # dataset = pd.read_csv(os.path.join('../../../data/raw', f'{dataset_name}.csv'))
+def run_experiment(model_path, tt_number, projection_method, input_path, dataset_name, model_names, outcome_name, output_path_train_test, test_input_path, grid_size, n_classes):
 
     all_results = []
     for model_name in model_names:
@@ -140,25 +99,22 @@ def run_experiment(model_path, tt_number, input_path, dataset_name, model_names,
 
         _, model_for_predictions = load_model_dice('TF2', f'{model_path}', tt_number, classifier_name=model_name, comparison_method_name=None)
 
-        # predictions_dataset_output = [np.argmax(x) for x in predictions_dataset]
         predictions_dataset_output = predictions_dataset
-        # intermediate_y_pred_output = [np.argmax(x) for x in intermediate_y_pred]
         intermediate_y_pred_output = intermediate_y_pred
 
-        pred_map = create_map_embedding.PredictionMap(grid_size=300, 
+        pred_map = create_map_embedding.PredictionMap(grid_size=grid_size, 
                                                     original_data=dataset, 
                                                     intermediate_gradient_points=intermediate_points, 
                                                     counterfactuals=counterfactuals,  
                                                     number_of_neighbors=3, 
                                                     model_for_predictions=model_for_predictions,
-                                                    # scaler_path_2D = os.path.join(input_path_dice, f'minmax_scaler_2D_{classifier_name}.save'),
-                                                    projection_method='lamp',
+                                                    projection_method=projection_method,
                                                     projection_name=model_name,
                                                     intermediate_predictions=np.array(intermediate_y_pred_output), 
                                                     original_predictions=np.array(predictions_dataset_output), 
                                                     counterfactual_predictions=np.array(cf_points_binary), 
                                                     outcome_name=outcome_name, 
-                                                    n_classes=5, 
+                                                    n_classes=n_classes, 
                                                     version=f'{model_name}', 
                                                     comparison=False,
                                                     dataset_name=dataset_name,
@@ -167,7 +123,7 @@ def run_experiment(model_path, tt_number, input_path, dataset_name, model_names,
         
         pred_map.fit_points_2D(path=output_path_train_test)
 
-        pred_map.fit_grid_multilateration(path=output_path_train_test)
+        pred_map.fit_grid_knn_weighted_interpolation(path=output_path_train_test)
 
         pred_map.plot_test_points_on_mapping(X_test, path=output_path_train_test, y_test=y_test, X_test_trans=X_test_trans, y_test_trans=y_test_trans, version='adv', X_test_subset=X_test_subset, adversarial=True)
 
@@ -201,8 +157,6 @@ def run_experiment(model_path, tt_number, input_path, dataset_name, model_names,
         print(f"Intrinsic dimensionality (PCA >=95% var): {dim_95_train} (train), {dim_95_high_dim} (high-dim)")
 
         # KL Divergence
-        # For demonstration, let's do a naive approach where X_reference = X_train:
-        # In a real scenario, you might have a "original dataset" vs "synthetic" or so.
         kl_div = compute_kl_divergence(X_reference, X_high_dim, bins=30)
         print(f"KL divergence (1D, feature[0]) between full data and train data: {kl_div:.4f}")
 
@@ -223,12 +177,16 @@ def run_experiment(model_path, tt_number, input_path, dataset_name, model_names,
 
 if __name__ == '__main__':
     tt_numbers = ['1'] #, '2', '3', '4', '5']
+    projection_method = 'lamp'
     for tt_number in tt_numbers:
-        run_experiment(model_path='evaluation/lamp/winequality-white_adv',
+        run_experiment(model_path='evaluation/winequality-white_adv',
                     tt_number=tt_number,
-                    input_path=f'../../../experiment_output/lamp/winequality-white_adv/train_test_{tt_number}', 
+                    projection_method=projection_method,
+                    input_path=f'../../../results/experiment_output/{projection_method}/winequality-white_adv/train_test_{tt_number}', 
                     dataset_name='winequality-white_adv', 
-                    model_names= ['MLP'], #['underfit_model','balanced_model', 'overfit_model'], #['MLP_model'], #['LogisticRegression','MLP'], #'underfit_model', , 'overfit_model'
+                    model_names= ['MLP'],
                     outcome_name='label', 
-                    output_path_train_test=f'../../../experiment_output/lamp/winequality-white_adv2/train_test_{tt_number}', 
-                    test_input_path=f'../../../experiment_input/lamp/winequality-white_adv/train_test_{tt_number}')
+                    output_path_train_test=f'../../../results/experiment_output/{projection_method}/winequality-white_adv/train_test_{tt_number}', 
+                    test_input_path=f'../../../data/experiment_input/[{projection_method}]/winequality-white_adv/train_test_{tt_number}',
+                    grid_size=300,
+                    n_classes=5)

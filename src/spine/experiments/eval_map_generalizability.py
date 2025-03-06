@@ -6,48 +6,9 @@ print(tf.config.list_physical_devices('GPU'))
 import os
 import numpy as np
 import pandas as pd
-import logging
-from copy import deepcopy
-from typing import List, Tuple, Dict, Callable
-import seaborn as sns
-import requests
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-from scipy.spatial.distance import euclidean
-from itertools import permutations, combinations
-from joblib import load
-import importlib
+from spine.data.load_data import *
+import spine.models.visualization.create_map_embedding as create_map_embedding
 
-import tensorflow as tf
-
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.metrics import accuracy_score
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.manifold import TSNE
-from sklearn.datasets import fetch_openml
-from sklearn.model_selection import train_test_split
-
-from sklearn.pipeline import Pipeline
-
-import VAE_DBS
-
-# from VAE_DBS.models import dice_gradients
-from VAE_DBS.models.dice_gradients import DiceCounterfactual
-from VAE_DBS.utils.utils import *
-from VAE_DBS.data.load_data import *
-from VAE_DBS.models.DiCE.dice_ml.utils.helpers import DataTransfomer
-import random
-import VAE_DBS.visualization.create_map_embedding as create_map_embedding
-import VAE_DBS.visualization.create_map_embedding_no_intermediate as create_map_embedding_no_intermediate
-import VAE_DBS.visualization.create_map.create_map_UMAP_test_no_intermediate as create_map_UMAP_test_no_intermediate
-# import ssnp_main.code.ssnp as ssnp
-import VAE_DBS.models.transformers.ssnp
-
-import skdim
 from sklearn.decomposition import PCA
 from scipy.stats import entropy
 from sklearn.metrics import confusion_matrix
@@ -109,9 +70,23 @@ def compute_kl_divergence(X: np.ndarray, X_reference: np.ndarray, bins: int = 30
     kl_div = entropy(hist_X, hist_ref)
     return kl_div
 
-def run_experiment(model_path, tt_number, input_path, dataset_name, model_names, outcome_name, output_path_train_test, test_input_path):
+def run_experiment(model_path, tt_number, projection_method, input_path, dataset_name, model_names, outcome_name, output_path_train_test, test_input_path, grid_size, n_classes):
+    """
+    Run an experiment to evaluate mapping accuracy of projection methods using intermediate points.
 
-    # dataset = pd.read_csv(os.path.join('../../../data/raw', f'{dataset_name}.csv'))
+    Parameters:
+    model_path (str): Path to the trained model.
+    tt_number (str): Test-train split identifier.
+    projection_method (str): Projection method (e.g., 'lamp').
+    input_path (str): Path to input data.
+    dataset_name (str): Name of the dataset.
+    model_names (list): List of model names to evaluate.
+    outcome_name (str): Name of the outcome variable.
+    output_path_train_test (str): Output path for results.
+    test_input_path (str): Path to test set data.
+    grid_size (int): Size of the grid for mapping.
+    n_classes (int): Number of classes in the dataset.
+    """
 
     all_results = []
     for model_name in model_names:
@@ -121,14 +96,14 @@ def run_experiment(model_path, tt_number, input_path, dataset_name, model_names,
 
         os.makedirs(output_path_train_test, exist_ok=True)
 
-        X_test = np.load(os.path.join(test_input_path, f'X_test.npy'))
         X_train = np.load(os.path.join(test_input_path, f'X_train.npy'))
-        X_test_total = np.load(os.path.join(test_input_path, f'X_test_total.npy'))
-        y_test_total = np.load(os.path.join(test_input_path, f'y_test_total.npy'))
+        y_train = np.load(os.path.join(test_input_path, f'y_train.npy'))
+        X_test = np.load(os.path.join(test_input_path, f'X_test.npy'))
+        y_test = np.load(os.path.join(test_input_path, f'y_test.npy'))
         X_test_trans = np.load(os.path.join(test_input_path, f'X_test_trans.npy'))
         y_test_trans = np.load(os.path.join(test_input_path, f'y_test_trans.npy'))
-        X_test_subset = np.load(os.path.join(test_input_path, f'X_test_subset.npy'))
-        y_test_subset = np.load(os.path.join(test_input_path, f'y_test_subset.npy'))
+        X_test_control = np.load(os.path.join(test_input_path, f'X_test_control.npy'))
+        y_test_control = np.load(os.path.join(test_input_path, f'y_test_control.npy'))
         
         predictions_dataset = dataset[outcome_name]
         intermediate_y_pred = intermediate_points[outcome_name]
@@ -136,58 +111,47 @@ def run_experiment(model_path, tt_number, input_path, dataset_name, model_names,
 
         _, model_for_predictions = load_model_dice('TF2', f'{model_path}', tt_number, classifier_name=model_name, comparison_method_name=None)
 
-        # predictions_dataset_output = [np.argmax(x) for x in predictions_dataset]
-        predictions_dataset_output = predictions_dataset
-        # intermediate_y_pred_output = [np.argmax(x) for x in intermediate_y_pred]
-        intermediate_y_pred_output = intermediate_y_pred
-
-        pred_map = create_map_embedding.PredictionMap(grid_size=300, 
-                                                    original_data=dataset, 
-                                                    intermediate_gradient_points=intermediate_points, 
-                                                    counterfactuals=counterfactuals,  
-                                                    number_of_neighbors=3, 
-                                                    model_for_predictions=model_for_predictions,
-                                                    # scaler_path_2D = os.path.join(input_path_dice, f'minmax_scaler_2D_{classifier_name}.save'),
-                                                    projection_method='lamp',
-                                                    projection_name=model_name,
-                                                    intermediate_predictions=np.array(intermediate_y_pred_output), 
-                                                    original_predictions=np.array(predictions_dataset_output), 
-                                                    counterfactual_predictions=np.array(cf_points_binary), 
-                                                    outcome_name=outcome_name, 
-                                                    n_classes=10, 
-                                                    version=f'{model_name}', 
-                                                    comparison=False,
-                                                    dataset_name=dataset_name,
-                                                    hidden_layer=True)
+        pred_map = create_map_embedding.PredictionMap(
+                                                grid_size=grid_size,
+                                                original_data=dataset,
+                                                intermediate_gradient_points=intermediate_points,
+                                                counterfactuals=counterfactuals,
+                                                number_of_neighbors=3,
+                                                model_for_predictions=model_for_predictions,
+                                                projection_method=projection_method,
+                                                projection_name=model_name,
+                                                intermediate_predictions=np.array(intermediate_y_pred),
+                                                original_predictions=np.array(predictions_dataset),
+                                                counterfactual_predictions=np.array(cf_points_binary),
+                                                outcome_name=outcome_name,
+                                                n_classes=n_classes,
+                                                version=model_name,
+                                                comparison=False,
+                                                dataset_name=dataset_name,
+                                                hidden_layer=True,
+                                                filter_jd=False
+                                            )
         
         
         pred_map.fit_points_2D(path=output_path_train_test)
 
-        pred_map.fit_grid_multilateration(path=output_path_train_test)
+        pred_map.fit_grid_knn_weighted_interpolation(path=output_path_train_test)
 
-        pred_map.plot_test_points_on_mapping(X_test_total, path=output_path_train_test, y_test=y_test_total, X_test_trans=X_test_trans, y_test_trans=y_test_trans, version='gen', X_test_subset=X_test_subset, y_test_subset=y_test_subset, adversarial=False, generalize=True)
+        pred_map.plot_test_points_on_mapping(X_test, path=output_path_train_test, y_test=y_test, X_test_trans=X_test_trans, y_test_trans=y_test_trans, version='gen', X_test_subset=X_test_control, y_test_subset=y_test_control, adversarial=False, generalize=True)
 
-        pred_map.plot_data_with_predictions(X_test=X_test_total, path=output_path_train_test)
+        pred_map.plot_data_with_predictions(X_test=X_test, path=output_path_train_test)
 
-        df_results = pred_map.evaluate_mapping_testset(X_test_total)
+        df_results = pred_map.evaluate_mapping_testset(X_test)
 
-        pred_map.plot_test_points_on_mapping(X_test_trans, path=output_path_train_test, version='trans')
-
-        df_results_gen = pred_map.evaluate_mapping_testset(X_test_trans)
+        df_results_gen = pred_map.evaluate_mapping_testset(X_test=X_test, X_test_trans=X_test_trans)
 
         df_results.to_csv(os.path.join(output_path_train_test, 'pixel_results.csv'), index=False)
         accuracy = (df_results["pixel_label"] == df_results["original_label"]).mean()
 
-        df_results_gen.to_csv(os.path.join(output_path_train_test, 'pixel_results.csv'), index=False)
+        df_results_gen.to_csv(os.path.join(output_path_train_test, 'pixel_results_gen.csv'), index=False)
         accuracy_gen = (df_results_gen["pixel_label"] == df_results_gen["original_label"]).mean()
-        # Compute the confusion matrix
         conf_matrix = confusion_matrix(y_test_trans, df_results_gen['pixel_label'])
 
-        # Print the confusion matrix
-        print("Confusion Matrix:")
-        print(conf_matrix)
-
-        # Optionally, save the confusion matrix to a CSV file
         conf_matrix_df = pd.DataFrame(conf_matrix)
         conf_matrix_df.to_csv(os.path.join(output_path_train_test, 'confusion_matrix.csv'), index=False)
 
@@ -205,8 +169,6 @@ def run_experiment(model_path, tt_number, input_path, dataset_name, model_names,
         print(f"Intrinsic dimensionality (PCA >=95% var): {dim_95_train} (train), {dim_95_high_dim} (high-dim)")
 
         # KL Divergence
-        # For demonstration, let's do a naive approach where X_reference = X_train:
-        # In a real scenario, you might have a "original dataset" vs "synthetic" or so.
         kl_div = compute_kl_divergence(X_reference, X_high_dim, bins=30)
         print(f"KL divergence (1D, feature[0]) between full data and train data: {kl_div:.4f}")
 
@@ -226,13 +188,17 @@ def run_experiment(model_path, tt_number, input_path, dataset_name, model_names,
     results_df.to_csv(os.path.join(output_path_train_test, 'results.csv'), index=False)
 
 if __name__ == '__main__':
-    tt_numbers = ['1'] #, '2', '3', '4', '5']
+    tt_numbers = ['1', '2', '3', '4', '5']
+    projection_method = 'lamp'
     for tt_number in tt_numbers:
-        run_experiment(model_path='evaluation/lamp/reduced_mnist_data_gen',
+        run_experiment(model_path='evaluation/reduced_mnist_data_gen',
                     tt_number=tt_number,
-                    input_path=f'../../../experiment_output/lamp/reduced_mnist_data_gen_2/train_test_{tt_number}', 
+                    projection_method=projection_method,
+                    input_path=f"../../../results/experiment_output/reduced_mnist_data_gen/train_test_{tt_number}", 
                     dataset_name='reduced_mnist_data_train', 
-                    model_names= ['MLP'], #['underfit_model','balanced_model', 'overfit_model'], #['MLP_model'], #['LogisticRegression','MLP'], #'underfit_model', , 'overfit_model'
+                    model_names= ['MLP'],
                     outcome_name='label', 
-                    output_path_train_test=f'../../../experiment_output/lamp/reduced_mnist_data_gen_5/train_test_{tt_number}', 
-                    test_input_path=f'../../../experiment_input/lamp/reduced_mnist_data_gen/train_test_{tt_number}')
+                    output_path_train_test=f'../../../results/experiment_output/reduced_mnist_data_gen/train_test_{tt_number}', 
+                    test_input_path=f'../../../data/experiment_input/reduced_mnist_data_gen/train_test_{tt_number}',
+                    grid_size=300,
+                    n_classes=10)

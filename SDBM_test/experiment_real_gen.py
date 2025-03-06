@@ -1,38 +1,25 @@
 import numpy as np
 import os
-import pickle
 from time import time
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.utils import to_categorical
 from sklearn.utils.extmath import cartesian
-from sklearn import linear_model
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.neural_network import MLPClassifier
 from skimage.color import rgb2hsv, hsv2rgb
 from tqdm import tqdm
 import matplotlib.pyplot as plt  # Correct import
 from matplotlib.colors import Normalize
-from matplotlib.colors import ListedColormap, BoundaryNorm, Normalize
+from matplotlib.colors import ListedColormap, Normalize
 import matplotlib.cm as cm
-from PIL import Image
 import pandas as pd
-from joblib import dump, load
 from sklearn.decomposition import PCA
 from scipy.stats import entropy
-from tensorflow.keras import regularizers
-from sklearn.metrics import accuracy_score
 import json
-from pickle import dump, load
 from matplotlib.colors import to_rgba
 
 import tensorflow as tf
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.layers import BatchNormalization
-from tensorflow.keras.models import load_model
 
 import ssnp
 
@@ -41,7 +28,7 @@ plt.rcParams["font.size"] = 25
 
 def run_experiment(name, classifier_names, classifier_paths, tt_number, epochs_dataset, classes_mult):
 
-    output_dir = f'../data/experiment_output/{name}/train_test_{tt_number}'
+    output_dir = f'experiment_output/{name}/train_test_{tt_number}'
 
     def save_confidence_image(prob_matrix, grid_size, output_path):
         """Save confidence image with consistent formatting."""
@@ -77,8 +64,6 @@ def run_experiment(name, classifier_names, classifier_paths, tt_number, epochs_d
 
         custom_cmap = ListedColormap(class_colors)
 
-        # data = cm.tab20(np_matrix / (n_classes - 1))
-        # data_vanilla = data[:,:,:3].copy()
         data = np.zeros((grid_size, grid_size, 4), dtype=float)
 
         for row in range(grid_size):
@@ -89,10 +74,7 @@ def run_experiment(name, classifier_names, classifier_paths, tt_number, epochs_d
                 # Use the same color indexing that you used in your class_colors.
                 data[row, col] = class_colors[class_idx % len(class_colors)]
 
-        # Now separate out the RGB if you only want a 3-channel image
         data_vanilla = data[..., :3]
-        # data_vanilla = np.flip(data_vanilla, axis=1)  # Rotate 180 and flip horizontally
-        # data_vanilla = np.rot90(data_vanilla, -1) # Rotate 180 and flip horizontally
 
         if max_value_hsv is not None:
             data_vanilla = rgb2hsv(data_vanilla)
@@ -101,7 +83,6 @@ def run_experiment(name, classifier_names, classifier_paths, tt_number, epochs_d
 
         # Vanilla plot without points
         fig, ax = plt.subplots(figsize=(8, 8), dpi=300)
-        # extent = (0, grid_size - 1, 0, grid_size - 1)
         ax.imshow(data_vanilla, origin='lower')
 
         if normalized_new_point is not None:
@@ -109,7 +90,6 @@ def run_experiment(name, classifier_names, classifier_paths, tt_number, epochs_d
             x_coord, y_coord = normalized_new_point[0]
             plt.scatter([x_coord], [y_coord], marker='x', c='red', s=100, linewidths=2, label='New Data Point')
 
-        # plt.legend(loc='upper right', fontsize=10)
         plt.axis('off')
         ax.axis('off')
         plt.savefig(os.path.join(output_dir, f"{classifier_name}_{grid_size}x{grid_size}_{dataset_name}_vanilla_no_points{suffix}.png"), bbox_inches='tight', pad_inches=0.1)
@@ -117,7 +97,6 @@ def run_experiment(name, classifier_names, classifier_paths, tt_number, epochs_d
 
         # Vanilla plot with test points
         fig, ax = plt.subplots(figsize=(8, 8), dpi=300)
-        # extent = (0, grid_size - 1, 0, grid_size - 1)
         ax.imshow(data_vanilla, origin='lower')
 
         # Vanilla plot with test points
@@ -233,9 +212,6 @@ def run_experiment(name, classifier_names, classifier_paths, tt_number, epochs_d
         # Alpha plot
         data_alpha = data.copy()
         data_alpha[:, :, 3] = prob_matrix
-        # data_alpha = np.flip(data_alpha, axis=1)  # Rotate 180 and flip horizontally
-        # data_alpha = np.rot90(data_alpha, -1)
-        # data_alpha = np.flip(np.rot90(data_alpha, 2), axis=1)  # Rotate -90 and flip horizontally
 
         fig, ax = plt.subplots(figsize=(8, 8), dpi=300)
         ax.imshow(data_alpha, origin='lower')
@@ -252,9 +228,6 @@ def run_experiment(name, classifier_names, classifier_paths, tt_number, epochs_d
         data_hsv = rgb2hsv(data_hsv)
         data_hsv[:, :, 2] = prob_matrix
         data_hsv = hsv2rgb(data_hsv)
-        # data_hsv = np.flip(data_hsv, axis=1)  # Rotate 180 and flip horizontally
-        # data_hsv = np.rot90(data_hsv, -1) # Rotate 180 and flip horizontally
-        # data_hsv = np.flip(np.rot90(data_hsv, 2), axis=1)  # Rotate 180 and flip horizontally
 
         fig, ax = plt.subplots(figsize=(8, 8), dpi=300)
         ax.imshow(data_hsv, origin='lower')
@@ -498,11 +471,11 @@ def run_experiment(name, classifier_names, classifier_paths, tt_number, epochs_d
 
     X_train = np.load(os.path.join(data_dir, f'X_train.npy'))
     y_train = np.load(os.path.join(data_dir, f'y_train.npy'))
-    X_test = np.load(os.path.join(data_dir, f'X_test_total.npy'))
-    y_test = np.load(os.path.join(data_dir, f'y_test_total.npy'))
+    X_test = np.load(os.path.join(data_dir, f'X_test.npy'))
+    y_test = np.load(os.path.join(data_dir, f'y_test.npy'))
     X_test_trans = np.load(os.path.join(data_dir, f'X_test_trans.npy'))
     y_test_trans = np.load(os.path.join(data_dir,f'y_test_trans.npy'))
-    X_test_subset = np.load(os.path.join(data_dir, f'X_test_subset.npy'))
+    X_test_control = np.load(os.path.join(data_dir, f'X_test_control.npy'))
 
     y_train = y_train.astype(int)
     y_test = y_test.astype(int)
@@ -688,10 +661,10 @@ def run_experiment(name, classifier_names, classifier_paths, tt_number, epochs_d
         probs_test_trans = clf.predict(X_test_trans)
         labels_test_trans = np.argmax(probs_test_trans, axis=1)
 
-        X_test_subset_ssnpgt = ssnpgt.transform(X_test_subset)
-        normalized_test_subset = scaler_2D.transform(X_test_subset_ssnpgt).astype('float32') * (grid_size - 1)
+        X_test_control_ssnpgt = ssnpgt.transform(X_test_control)
+        normalized_test_subset = scaler_2D.transform(X_test_control_ssnpgt).astype('float32') * (grid_size - 1)
         normalized_test_subset = np.clip(normalized_test_subset, 0, grid_size - 1).astype(int)
-        probs_test_subset = clf.predict(X_test_subset)
+        probs_test_subset = clf.predict(X_test_control)
         labels_test_subset = np.argmax(probs_test_subset, axis=1)
 
         # new_point = pd.read_csv('input_data/hapiness/x_new.csv').values[0]

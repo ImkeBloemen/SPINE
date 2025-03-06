@@ -3,48 +3,19 @@
 import os
 import numpy as np
 import pandas as pd
-from copy import deepcopy
-from typing import List, Tuple, Dict, Callable
-import seaborn as sns
-import requests
 import matplotlib
 matplotlib.use('Agg')  # Use a non-interactive backend
 import matplotlib.pyplot as plt
 from scipy.spatial.distance import euclidean
-from itertools import permutations, combinations
-from joblib import load
-import importlib
-
-#from numba import jit, cuda
 
 import tensorflow as tf
 
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.metrics import accuracy_score
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.manifold import TSNE
-from sklearn.datasets import fetch_openml
-
-from sklearn.pipeline import Pipeline
-
-import VAE_DBS
-from VAE_DBS.models.dice_gradients import DiceCounterfactual
-from VAE_DBS.utils.utils import *
-from VAE_DBS.data.load_data import *
-from VAE_DBS.models.DiCE.dice_ml.utils.helpers import DataTransfomer
-import random
-from VAE_DBS.visualization.create_map_embedding import PredictionMap
-import VAE_DBS.visualization.create_map.create_map_UMAP_test_no_intermediate as create_map_UMAP_test_no_intermediate
-import VAE_DBS.models.transformers.ssnp
+from spine.models.dice_gradients import DiceCounterfactual
+from spine.data.load_data import *
+from spine.models.visualization.create_map_embedding import PredictionMap
 
 from sklearn.metrics.pairwise import pairwise_kernels, pairwise_distances
-from sklearn.neighbors import KernelDensity
 from scipy.stats import entropy
-from skdim import id
 from sklearn.decomposition import PCA
 
 # Ensure output directories exist
@@ -76,21 +47,16 @@ def calculate_intrinsic_dimensionality(data_array, method_name='estimated_high_d
     plt.close()
     print(f"Cumulative variance plot saved to {plot_filename}")
 
-    # Method 2: skdim's lPCA
-    lpca = id.lPCA()
-    intrinsic_dimensionality_lpca = lpca.fit(X).dimension_
-    print(f"Intrinsic dimensionality (lPCA) for {method_name}: {intrinsic_dimensionality_lpca}")
-
     # Save results to a CSV file
     results = pd.DataFrame({
-        'Method': ['PCA (95% variance)', 'skdim lPCA'],
-        'Intrinsic Dimensionality': [intrinsic_dimensionality_pca, intrinsic_dimensionality_lpca]
+        'Method': ['PCA (95% variance)'],
+        'Intrinsic Dimensionality': [intrinsic_dimensionality_pca]
     })
     results_filename = os.path.join(save_path, f'intrinsic_dimensionality_{method_name}.csv')
     results.to_csv(results_filename, index=False)
     print(f"Intrinsic dimensionality results saved to {results_filename}")
 
-    return intrinsic_dimensionality_pca, intrinsic_dimensionality_lpca
+    return intrinsic_dimensionality_pca
 
 def compute_kl_divergence(X: np.ndarray, X_reference: np.ndarray, bins: int = 30) -> float:
     """
@@ -159,7 +125,7 @@ def run_experimentation():
     # Load dataset and model
     # Assume you have functions or code to load your dataset and model
     dataset_name = 'reduced_mnist_data'
-    data = pd.read_csv('../../../data/raw/reduced_mnist_data.csv')
+    data = pd.read_csv('../../../data/reduced_mnist_data.csv')
     model_name = 'evaluation/mnist'
     classifier_name = 'mlp_model'
     outcome_name = 'label'
@@ -183,9 +149,9 @@ def run_experimentation():
     # Prepare a DataFrame to store results
     results_df = pd.DataFrame(columns=[
         'Proto Weight', 'AE Weight', 'Prediction Weight', 'Num Neighbors',
-        # 'Intrinsic Dim PCA', 'Intrinsic Dim lPCA',
+        'Intrinsic Dim PCA',
         'KL Divergence',
-        # 'Boundary Count', 'Boundary Percentage'
+        'Boundary Count', 'Boundary Percentage'
     ])
 
     # Iterate over hyperparameters
@@ -229,7 +195,7 @@ def run_experimentation():
                     )
                     # Run the mapping
                     pred_map.fit_points_2D()
-                    pred_map.fit_grid_multilateration(path='../../../results/experiments/hyperparameters/points')
+                    pred_map.fit_grid_knn_weighted_interpolation(path='../../../results/experiments/hyperparameters/points')
 
                     # Perform measurements
                     estimated_hd_points_all = np.vstack(pred_map.estimated_hd_points_all)
@@ -238,32 +204,28 @@ def run_experimentation():
                     X_estimated = estimated_hd_points_all
 
                     # Calculate intrinsic dimensionality
-                    # id_pca, id_lpca = calculate_intrinsic_dimensionality(
-                    #     X_estimated,
-                    #     method_name=f'estimated_hd_points_pw{proto_weight}_aw{ae_weight}_pw{prediction_weight}_nn{number_of_neighbors}'
-                    # )
+                    id_pca = calculate_intrinsic_dimensionality(
+                        X_estimated,
+                        method_name=f'estimated_hd_points_pw{proto_weight}_aw{ae_weight}_pw{prediction_weight}_nn{number_of_neighbors}'
+                    )
 
                     # Calculate distribution metrics
                     kl_div_original_estimated = compute_kl_divergence(X_original, X_estimated)
-                    # mmd_original_estimated = calculate_mmd(X_original, X_estimated)
-                    # wasserstein_original_estimated = calculate_wasserstein_distance(X_original, X_estimated)
-                    # print(f"KL Divergence between Original and Estimated: {kl_div_original_estimated}")
-                    # print(f"MMD between Original and Estimated: {mmd_original_estimated}")
-                    # print(f"Wasserstein Distance between Original and Estimated: {wasserstein_original_estimated}")
-
+                    print(f"KL Divergence between Original and Estimated: {kl_div_original_estimated}")
+            
                     # Count boundary predictions
-                    # prediction_prob = pred_map.grid_predictions_prob.reshape(-1, pred_map.n_classes)
-                    # print("prediction_prob", prediction_prob)
-                    # if pred_map.n_classes == 2:
-                    #     # For binary classification
-                    #     count, percentage = count_boundary_predictions(prediction_prob.flatten())
-                    # else:
-                    #     # For multi-class classification
-                    #     max_probs = np.max(prediction_prob, axis=1)
-                    #     print("max_probs", max_probs)
-                    #     count, percentage = count_boundary_predictions(max_probs)
-                    # print(f"Number of points near the boundary: {count}")
-                    # print(f"Percentage of points near the boundary: {percentage:.2f}%")
+                    prediction_prob = pred_map.grid_predictions_prob.reshape(-1, pred_map.n_classes)
+                    print("prediction_prob", prediction_prob)
+                    if pred_map.n_classes == 2:
+                        # For binary classification
+                        count, percentage = count_boundary_predictions(prediction_prob.flatten())
+                    else:
+                        # For multi-class classification
+                        max_probs = np.max(prediction_prob, axis=1)
+                        print("max_probs", max_probs)
+                        count, percentage = count_boundary_predictions(max_probs)
+                    print(f"Number of points near the boundary: {count}")
+                    print(f"Percentage of points near the boundary: {percentage:.2f}%")
 
                     # Save metrics to DataFrame
                     new_row = {
@@ -277,12 +239,14 @@ def run_experimentation():
                     results_df.loc[len(results_df)] = new_row
 
                     # Save intermediate results
-                    results_df.to_csv('../../../results/experiments/hyperparameters/metrics/KL_experimentation_results_test.csv', index=False)
-                    print("Results saved to '../../../results/experiments/hyperparameters/metrics/KL_experimentation_results_test.csv'")
+                    hyperparameter_output = '../../../results/experiments/hyperparameters/metrics/experimentation_results.csv'
+                    os.makedirs(hyperparameter_output, exist_ok=True)
+                    results_df.to_csv(hyperparameter_output, index=False)
+                    print(f"Results saved to {hyperparameter_output}")
 
     # Final save
-    results_df.to_csv('../../../results/experiments/hyperparameters/metrics/KL_experimentation_results_test.csv', index=False)
-    print("Final results saved to '../../../results/experiments/hyperparameters/metrics/KL_experimentation_results_test.csv'")
+    results_df.to_csv(hyperparameter_output, index=False)
+    print(f"Final results saved to {hyperparameter_output}")
 
 if __name__ == '__main__':
     run_experimentation()

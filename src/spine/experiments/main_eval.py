@@ -5,52 +5,17 @@ import os
 import numpy as np
 import pandas as pd
 import logging
-from copy import deepcopy
-from typing import List, Tuple, Dict, Callable
-import seaborn as sns
-import requests
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-from scipy.spatial.distance import euclidean
-from itertools import permutations, combinations
-from joblib import load
-import importlib
-
+from typing import List, Dict
 import tensorflow as tf
-
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.metrics import accuracy_score
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.manifold import TSNE
-from sklearn.datasets import fetch_openml
-from sklearn.model_selection import train_test_split
-
-from sklearn.pipeline import Pipeline
-
-import VAE_DBS
-
-# from VAE_DBS.models import dice_gradients
-from VAE_DBS.models.dice_gradients import DiceCounterfactual
-from VAE_DBS.utils.utils import *
-from VAE_DBS.data.load_data import *
-from VAE_DBS.models.DiCE.dice_ml.utils.helpers import DataTransfomer
-import random
-import VAE_DBS.visualization.create_map_embedding as create_map_embedding
-import VAE_DBS.visualization.create_map.create_map_UMAP_test_no_intermediate as create_map_UMAP_test_no_intermediate
-# import ssnp_main.code.ssnp as ssnp
-import VAE_DBS.models.transformers.ssnp
-
-import skdim
+from spine.models.dice_gradients import DiceCounterfactual
+from spine.data.load_data import *
+import spine.models.visualization.create_map_embedding as create_map_embedding
 from sklearn.decomposition import PCA
 from scipy.stats import entropy
 import time
 
 #Run this experiment for every train/test combination. This file runs the experiment for the same dataset,
-#on one train/test split, and three different classifiers: Logistic Regression, SVM, and MLP. For one comparison method.
+#on one train/test split, and two different classifiers: Logistic Regression and MLP, for one comparison method.
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -136,15 +101,19 @@ def compute_kl_divergence(X: np.ndarray, X_reference: np.ndarray, bins: int = 30
     return kl_div
 
 
-
 def run_classifier_experiment(
     data: pd.DataFrame,
     classifier_name: str,
+    outcome_name: str,
+    n_classes: int,
+    projection_method: str,
     model_path: str,
     dataset_name: str,
     input_path: str,
     output_path: str,
-    tt_number: str
+    tt_number: str,
+    grid_size: int,
+    n_samples: int
 ) -> Dict:
     """
     Run the experiment for a single classifier.
@@ -155,6 +124,12 @@ def run_classifier_experiment(
         Dataset.
     classifier_name : str
         Name of the classifier.
+    outcome_name : str
+        Name of the outcome variable.
+    n_classes : int
+        Number of output classes in the dataset.
+    projection_method : str
+        Name of the projection method.
     model_path : str
         Path to the classifier model.
     dataset_name : str
@@ -163,6 +138,10 @@ def run_classifier_experiment(
         Output directory.
     tt_number : str
         Train-test split identifier.
+    grid_size : int
+        Size of the grid for the prediction map.
+    n_samples : int
+        Number of samples for VAE-driven boundary sampling.
 
     Returns:
     -------
@@ -192,7 +171,7 @@ def run_classifier_experiment(
         dataset_name=dataset_name,
         data_columns=data.columns,
         model_name=model_path,
-        outcome_name="label",
+        outcome_name=outcome_name,
         preprocessing=None,
         backend="TF2",
         model_format="h5",
@@ -207,11 +186,11 @@ def run_classifier_experiment(
 
     output_path_train_test = os.path.join(output_path, train_test_path)
 
-    # dice_cf.evaluate_autoencoder(save_path=output_path_train_test, version=f'{classifier_name}')
+    dice_cf.evaluate_autoencoder(save_path=output_path_train_test, version=f'{classifier_name}')
 
     # Fit DiceCounterfactual
-    counterfactuals, dataset, predictions_dataset, intermediate_y_pred, _, cf_points_binary, _, _, intermediate_points, _, _, _, _, _, _, _ = dice_cf.fit_transform_all_gradient(
-        num_samples=30, total_cfs=1, desired_class="opposite", learning_rate=0.01, min_iter=10
+    counterfactuals, dataset, predictions_dataset, intermediate_y_pred, _, cf_points_binary, _, _, intermediate_points, _, _, _ = dice_cf.fit_transform_all_gradient(
+        num_samples=n_samples, total_cfs=1, desired_class="opposite", learning_rate=0.01, min_iter=10
     )                                                                
     #Save the results
     
@@ -223,20 +202,19 @@ def run_classifier_experiment(
     intermediate_y_pred_output = [np.argmax(x) for x in intermediate_y_pred]
 
 
-    pred_map = create_map_embedding.PredictionMap(grid_size=300, 
+    pred_map = create_map_embedding.PredictionMap(grid_size=grid_size, 
                                                 original_data=dataset, 
                                                 intermediate_gradient_points=intermediate_points, 
                                                 counterfactuals=counterfactuals,  
                                                 number_of_neighbors=3, 
                                                 model_for_predictions=model_for_predictions,
-                                                # scaler_path_2D = os.path.join(input_path_dice, f'minmax_scaler_2D_{classifier_name}.save'),
-                                                projection_method='lamp',
+                                                projection_method=projection_method,
                                                 projection_name=classifier_name,
                                                 intermediate_predictions=np.array(intermediate_y_pred_output), 
                                                 original_predictions=np.array(predictions_dataset_output), 
                                                 counterfactual_predictions=np.array(cf_points_binary), 
-                                                outcome_name='label', 
-                                                n_classes=10, 
+                                                outcome_name=outcome_name, 
+                                                n_classes=n_classes, 
                                                 version=f'{classifier_name}', 
                                                 comparison=False,
                                                 dataset_name=dataset_name,
@@ -245,7 +223,7 @@ def run_classifier_experiment(
     
     pred_map.fit_points_2D(path=output_path_train_test, input_path=input_path_dice)
 
-    pred_map.fit_grid_multilateration(path=output_path_train_test)
+    pred_map.fit_grid_knn_weighted_interpolation(path=output_path_train_test)
 
     pred_map.plot_test_points_on_mapping(X_test, path=output_path_train_test)
 
@@ -269,8 +247,6 @@ def run_classifier_experiment(
     print(f"Intrinsic dimensionality (PCA >=95% var): {dim_95_train} (train), {dim_95_high_dim} (high-dim)")
 
     # KL Divergence
-    # For demonstration, let's do a naive approach where X_reference = X_train:
-    # In a real scenario, you might have a "original dataset" vs "synthetic" or so.
     kl_div = compute_kl_divergence(X_reference, X_high_dim, bins=30)
     print(f"KL divergence (1D, feature[0]) between full data and train data: {kl_div:.4f}")
 
@@ -284,23 +260,20 @@ def run_classifier_experiment(
     }
 
     return results
-    # # Append results to a DataFrame
-    # if 'results_df' not in locals():
-    #     results_df = pd.DataFrame(results, index=[0])
-    # else:
-    #     results_df = results_df.append(results, ignore_index=True)
-
-    # # Save the DataFrame to a CSV file
-    # results_df.to_csv(f"{path}/experiment_results.csv", index=False)
 
 def run_experiment(
     data_path: str,
     dataset_name: str,
+    outcome_name: str,
+    projection_method: str,
     classifiers: List[str],
     classifier_paths: List[str],
     input_dir: str,
     output_dir: str,
-    tt_number: str
+    tt_number: str,
+    n_classes: int,
+    grid_size: int,
+    n_samples: int
 ):
     """
     Main experiment runner.
@@ -311,6 +284,10 @@ def run_experiment(
         Path to the dataset.
     dataset_name : str
         Name of the dataset.
+    outcome_name : str
+        Name of the outcome variable.
+    projection_method : str
+        Name of the projection method.
     classifiers : List[str]
         List of classifier names.
     classifier_paths : List[str]
@@ -319,12 +296,18 @@ def run_experiment(
         Directory for output files.
     tt_number : str
         Train-test split identifier.
+    n_classes : int
+        Number of output classes in the dataset.
+    grid_size : int
+        Size of the grid for the prediction map.
+    n_samples : int
+        Number of samples for VAE-driven boundary sampling
     """
     data = setup_experiment(data_path)
     results_list = []
 
     for classifier, model_path in zip(classifiers, classifier_paths):
-        result = run_classifier_experiment(data, classifier, model_path, dataset_name, input_dir, output_dir, tt_number)
+        result = run_classifier_experiment(data, classifier, outcome_name, n_classes, projection_method, model_path, dataset_name, input_dir, output_dir, tt_number, grid_size, n_samples)
         results_list.append(result)
 
     results_df = pd.DataFrame(results_list)
@@ -333,35 +316,31 @@ def run_experiment(
 
 if __name__ == "__main__":
     # Experiment parameters
-    DATA_PATH = "C:/Users/imke.bloemen/OneDrive - Accenture/1. Graduation/Code/NewCode/VAE_DBS/data/raw/reduced_mnist_data.csv"
+    PROJECTION_METHOD = "lamp"
+    DATA_PATH = "../../../data/reduced_mnist_data.csv"
     DATASET_NAME = "reduced_mnist_data"
-    INPUT_DIR = "C:/Users/imke.bloemen/OneDrive - Accenture/1. Graduation/Code/NewCode/VAE_DBS/experiment_input/lamp/reduced_mnist_data"
-    OUTPUT_DIR = "C:/Users/imke.bloemen/OneDrive - Accenture/1. Graduation/Code/NewCode/VAE_DBS/experiment_output/lamp/reduced_mnist_data_time_test"
+    INPUT_DIR = f"../../../data/experiment_input/reduced_mnist_data"
+    OUTPUT_DIR = f"../../../results/experiment_output/{PROJECTION_METHOD}/reduced_mnist_data"
     TT_NUMBERS = ["1", "2", "3", "4", "5"]
-    # num_samples_list = [50]
+    OUTCOME_NAME = "label"
+    N_CLASSES = 10
+    GRID_SIZE = 300
+    N_SAMPLES = 30
 
-    #Do not forget to check load_data.py!
-
-    CLASSIFIERS = ['LogisticRegression', 'MLP']      # #"underfit_model", , "overfit_model"
+    CLASSIFIERS = ['MLP'] #'LogisticRegression',
     CLASSIFIER_PATHS = [
-        'evaluation/lamp/reduced_mnist_data',
-        'evaluation/lamp/reduced_mnist_data'
-        #"evaluation/mnist_filtered",
-        # "evaluation/mnist_filtered_sep"
-        # "evaluation/mnist_sdbm"
-        # "evaluation/mnist_filtered"
+        'evaluation/reduced_mnist_data',
+        #'evaluation/reduced_mnist_data'
     ]
 
-    # for num_samples in num_samples_list:
     for TT_NUMBER in TT_NUMBERS:
         print("TT_NUMBER", TT_NUMBER)
         start_time = time.time()
-        
-        run_experiment(DATA_PATH, DATASET_NAME, CLASSIFIERS, CLASSIFIER_PATHS, INPUT_DIR, OUTPUT_DIR, TT_NUMBER)
+
+        run_experiment(DATA_PATH, DATASET_NAME, OUTCOME_NAME, PROJECTION_METHOD, CLASSIFIERS, CLASSIFIER_PATHS, INPUT_DIR, OUTPUT_DIR, TT_NUMBER, N_CLASSES, GRID_SIZE, N_SAMPLES)
         
         end_time = time.time()
         elapsed_time = end_time - start_time
         print(f"Time elapsed for TT_NUMBER {TT_NUMBER}: {elapsed_time:.2f} seconds")
         with open(os.path.join(OUTPUT_DIR, f'train_test_{TT_NUMBER}', "elapsed_time.txt"), "w") as f:
             f.write(f"Time elapsed for TT_NUMBER {TT_NUMBER}: {elapsed_time:.2f} seconds")
-        run_experiment(DATA_PATH, DATASET_NAME, CLASSIFIERS, CLASSIFIER_PATHS, INPUT_DIR, OUTPUT_DIR, TT_NUMBER)

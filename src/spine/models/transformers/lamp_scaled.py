@@ -10,7 +10,7 @@
 # doi: 10.1109/TVCG.2011.220.
 
 import numpy as np
-from VAE_DBS.models.transformers.force.force_scheme import ForceScheme
+from spine.models.transformers.force.force_scheme import ForceScheme
 from sklearn.neighbors import KDTree
 
 epsilon = 1e-7

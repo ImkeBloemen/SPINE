@@ -36,14 +36,18 @@ def process_data(name, outcome_name, tt_number, rs):
     """
     Load and preprocess the dataset for all classes, creating train and test sets.
     """
-    data = pd.read_csv(f'input_data/new_data/{name}.csv')
+    data = pd.read_csv(f'../data/{name}.csv')
 
-    # data = data[data['quality'] != 0]
-    # data = data[data['quality'] != 6]
-    
-    y = data[outcome_name]
-    # y = y - 1
-    X = data.drop(columns=[outcome_name])
+    if "wine" in name:
+        data = data[data['quality'] != 0]
+        data = data[data['quality'] != 6]
+        
+        y = data[outcome_name]
+        y = y - 1
+        X = data.drop(columns=[outcome_name])
+    else:
+        y = data[outcome_name]
+        X = data.drop(columns=[outcome_name])
 
     base_dir = f'input_data/{name}/train_test_{tt_number}'
     os.makedirs(base_dir, exist_ok=True)

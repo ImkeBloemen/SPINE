@@ -1,4 +1,4 @@
-from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
+from sklearn.preprocessing import FunctionTransformer
 
 def ohe_min_max_transformation(data, data_interface):
     """the data is one-hot-encoded and min-max normalized and fed to the ML model"""
@@ -33,11 +33,8 @@ class DataTransfomer:
                     kw_args=self.kw_args,
                     inv_kw_args=self.kw_args)
         elif self.func is None:
-            # identity transformation
-            # add more ready-to-use transformers (such as label-encoding) in elif loops.
             self.data_transformer = FunctionTransformer(func=self.func, kw_args=None, validate=False)
         else:
-            # add more ready-to-use transformers (such as label-encoding) in elif loops.
             self.data_transformer = FunctionTransformer(func=self.func, kw_args=self.kw_args, validate=False)
 
     def transform(self, data):

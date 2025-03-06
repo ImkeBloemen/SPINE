@@ -25,20 +25,12 @@ class DiceTensorFlow2(ExplainerBase):
         :param model_interface: an interface class to access trained ML model.
 
         """
-        # initiating data related parameters
+       
         super().__init__(data_interface)
-        # initializing model related variables
+       
         self.model = model_interface
-        self.model.load_model()  # loading trained model
-        # self.model.transformer.feed_data_params(data_interface)
-        # self.model.transformer.initialize_transform_func() #Currently using FunctionTransformer from sklearn.
+        self.model.load_model()  
         
-        # temp data to create some attributes like encoded feature names
-        # if hasattr(self.data_interface, "data_df"):
-        #     temp_ohe_data = self.model.transformer.transform(self.data_interface.data_df.iloc[[0]])
-        # else:
-        #     temp_ohe_data = None
-        # Encode the feature labels without using model.transformer
         if hasattr(self.data_interface, "data_df"):
             temp_ohe_data = self.data_interface.one_hot_encode_data(self.data_interface.data_df.iloc[[0]])
         else:
@@ -131,10 +123,7 @@ class DiceTensorFlow2(ExplainerBase):
 
         # check permitted range for continuous features
         if permitted_range is not None:
-            # if not self.data_interface.check_features_range(permitted_range):
-            #     raise ValueError(
-            #         "permitted range of features should be within their original range")
-            # else:
+            
             self.data_interface.permitted_range = permitted_range
             self.minx, self.maxx = self.data_interface.get_minx_maxx(normalized=True)
             self.cont_minx = []
@@ -143,9 +132,7 @@ class DiceTensorFlow2(ExplainerBase):
                 self.cont_minx.append(self.data_interface.permitted_range[feature][0])
                 self.cont_maxx.append(self.data_interface.permitted_range[feature][1])
 
-        # if([total_CFs, algorithm, features_to_vary] != self.cf_init_weights):
         self.do_cf_initializations(total_CFs, algorithm, features_to_vary)
-        # if [yloss_type, diversity_loss_type, feature_weights] != self.loss_weights:
         self.do_loss_initializations(yloss_type, diversity_loss_type, feature_weights)
         if [prediction_weight, proximity_weight, diversity_weight, categorical_penalty] != self.hyperparameters:
             self.update_hyperparameters(prediction_weight, proximity_weight, diversity_weight, categorical_penalty, ae_weight, proto_weight)
@@ -175,14 +162,6 @@ class DiceTensorFlow2(ExplainerBase):
 
         return CounterfactualExplanations(cf_examples_list=[counterfactual_explanations], intermediate_cfs=intermediate_cfs, gradients=gradients, losses=losses, intermediate_predictions=intermediate_predictions, iterations=self.max_iterations_run)
 
-    # def predict_fn(self, input_instance):
-    #     """prediction function"""
-    #     temp_preds = self.model.get_output(input_instance).numpy()
-    #     if self.multi_class == False:
-    #         return np.array([preds[(self.num_output_nodes-1):] for preds in temp_preds], dtype=np.float32)
-    #     else:
-    #         return temp_preds
-
     def predict_fn(self, input_instance):
         """Prediction function that returns probabilities."""
         logits = self.model.get_output(input_instance)
@@ -193,28 +172,10 @@ class DiceTensorFlow2(ExplainerBase):
             probs = tf.nn.sigmoid(logits).numpy().flatten()
             return probs[0]
 
-
-    # def predict_fn_for_sparsity(self, input_instance):
-    #     """prediction function for sparsity correction"""
-    #     input_instance = self.model.transformer.transform(input_instance).to_numpy()
-    #     return self.predict_fn(tf.constant(input_instance, dtype=tf.float32))
-
     def predict_fn_for_sparsity(self, input_instance):
         """prediction function for sparsity correction"""
-        # input_instance = self.model.transformer.transform(input_instance).to_numpy()
-        # input_instance = self.transformer.transform(input_instance) #not needed bc data already scaled?
         predictions = self.predict_fn(tf.constant(input_instance, dtype=tf.float32))
         return predictions
-        
-        # Check if the output is binary or multiclass
-        # if predictions.shape[-1] == 1:
-        # if predictions.ndim == 0:
-        #     # Scalar prediction
-        #     # Binary classification
-        #     return tf.sigmoid(predictions).numpy()
-        # else:
-        #     # Multiclass classification
-        #     return tf.nn.softmax(predictions).numpy()
 
     def do_cf_initializations(self, total_CFs, algorithm, features_to_vary):
         """Intializes CFs and other related variables."""
@@ -224,25 +185,16 @@ class DiceTensorFlow2(ExplainerBase):
         if algorithm == "RandomInitCF":
             # no. of times to run the experiment with random inits for diversity
             self.total_random_inits = total_CFs
-            self.total_CFs = 1          # size of counterfactual set
-        else: #we want this
+            self.total_CFs = 1        
+        else: 
             self.total_random_inits = 0
-            self.total_CFs = total_CFs  # size of counterfactual set
+            self.total_CFs = total_CFs  
 
         # freeze those columns that need to be fixed
         if features_to_vary != self.features_to_vary:
             self.features_to_vary = features_to_vary
         self.feat_to_vary_idxs = self.data_interface.get_indexes_of_features_to_vary(features_to_vary=features_to_vary)
         self.freezer = tf.constant([1.0 if ix in self.feat_to_vary_idxs else 0.0 for ix in range(len(self.minx[0]))])
-
-        # CF initialization
-        # if len(self.cfs) != self.total_CFs:
-        #     self.cfs = []
-        #     for _ in range(self.total_CFs):
-        #         one_init = [[]]
-        #         for jx in range(self.minx.shape[1]):
-        #             one_init[0].append(np.random.uniform(self.minx[0][jx], self.maxx[0][jx]))
-        #         self.cfs.append(tf.Variable(one_init, dtype=tf.float32))
 
         self.cfs = []
         for _ in range(self.total_CFs):
@@ -336,13 +288,6 @@ class DiceTensorFlow2(ExplainerBase):
     def compute_dist(self, x_hat, x1):
         """Compute weighted distance between two vectors."""
         return tf.reduce_sum(tf.multiply((tf.abs(x_hat - x1)), self.feature_weights_list))
-
-    # def compute_proximity_loss(self):
-    #     """Compute the second part (distance from x1) of the loss function."""
-    #     proximity_loss = 0.0
-    #     for i in range(self.total_CFs):
-    #         proximity_loss += self.compute_dist(self.cfs[i], self.x1)
-    #     return proximity_loss/tf.cast((tf.multiply(len(self.minx[0]), self.total_CFs)), dtype=tf.float32)
     
     def compute_proximity_loss(self):
         proximity_loss = tf.reduce_sum([self.compute_dist(self.cfs[i], self.x1) for i in range(self.total_CFs)])
@@ -389,16 +334,6 @@ class DiceTensorFlow2(ExplainerBase):
                     diversity_loss += 1.0/(1.0 + self.compute_dist(self.cfs[i], self.cfs[j]))
 
             return 1.0 - (diversity_loss/count)
-
-    # def compute_regularization_loss(self):
-    #     """Adds a linear equality constraints to the loss functions - to ensure all levels
-    #        of a categorical variable sums to one"""
-    #     regularization_loss = 0.0
-    #     for i in range(self.total_CFs):
-    #         for v in self.encoded_categorical_feature_indexes:
-    #             regularization_loss += tf.pow((tf.reduce_sum(self.cfs[i][0, v[0]:v[-1]+1]) - 1.0), 2)
-
-        # return regularization_loss
 
     def compute_regularization_loss(self):
         # Stack all CFs into a single tensor
@@ -452,12 +387,11 @@ class DiceTensorFlow2(ExplainerBase):
         for n in range(self.total_CFs):
             one_init = []
             for i in range(len(self.minx[0])):
-                if i in self.feat_to_vary_idxs: #all features
-                    if init_near_query_instance: #True
+                if i in self.feat_to_vary_idxs:
+                    if init_near_query_instance: 
                         init_value = query_instance[0][i] + (n * 1e-5)
                         init_value = np.clip(init_value, self.minx[0][i], self.maxx[0][i])
                         one_init.append(init_value)
-                        # one_init.append(query_instance[0][i]+(n*1*e-5))
                     else:
                         one_init.append(np.random.uniform(self.minx[0][i], self.maxx[0][i]))
                 else:
@@ -471,11 +405,10 @@ class DiceTensorFlow2(ExplainerBase):
         for index, tcf in enumerate(self.cfs):
             cf = tcf.numpy()
             for i, v in enumerate(self.encoded_continuous_feature_indexes):
-                # continuous feature in orginal scale
                 org_cont = (cf[0, v]*(self.cont_maxx[i] - self.cont_minx[i])) + self.cont_minx[i]
-                org_cont = round(org_cont, self.cont_precisions[i])  # rounding off
+                org_cont = round(org_cont, self.cont_precisions[i])
                 normalized_cont = (org_cont - self.cont_minx[i])/(self.cont_maxx[i] - self.cont_minx[i])
-                cf[0, v] = normalized_cont  # assign the projected continuous value
+                cf[0, v] = normalized_cont
 
             for v in self.encoded_categorical_feature_indexes:
                 maxs = np.argwhere(
@@ -507,17 +440,8 @@ class DiceTensorFlow2(ExplainerBase):
         # do GD for min iterations
         if itr < self.min_iter:
             return False
-        
-        # intermediate projections
-        # if self.project_iter > 0 and itr > 0:
-        #     if itr % self.project_iter == 0:
-        #         self.round_off_cfs(assign=True)
-
-        # Check if CFs meet the desired prediction
-        # temp_cfs = self.round_off_cfs(assign=False)   
 
         if self.multi_class:
-            # test_preds = [self.predict_fn(tf.constant(cf, dtype=tf.float32)) for cf in temp_cfs]
             test_preds = [self.predict_fn(tf.constant(cf, dtype=tf.float32)) for cf in self.cfs]
             predicted_classes = [np.argmax(pred) for pred in test_preds]
             if int(predicted_classes[0]) == int(self.target_cf_class) and test_preds[0][int(self.target_cf_class)] > self.stopping_threshold:
@@ -525,7 +449,6 @@ class DiceTensorFlow2(ExplainerBase):
                 print("Converged because all CFs have reached the target class and probability.")
                 return True
         else:
-            # test_preds = [self.predict_fn(tf.constant(cf, dtype=tf.float32)) for cf in temp_cfs]
             test_preds = [self.predict_fn(tf.constant(cf, dtype=tf.float32)) for cf in self.cfs]
             if self.target_cf_class == 0 and all(i <= self.stopping_threshold for i in test_preds):
                 self.converged = True
@@ -556,25 +479,6 @@ class DiceTensorFlow2(ExplainerBase):
                 return True  
         else:
             self.loss_converge_iter = 0
-                # temp_cfs = self.round_off_cfs(assign=False)
-                # test_preds = [self.predict_fn(tf.constant(cf, dtype=tf.float32))[0] for cf in temp_cfs]
-
-                # if self.multi_class:
-                #     predicted_classes = [np.argmax(pred) for pred in test_preds]
-
-                #     if all(pred_class == self.target_cf_class for pred_class in predicted_classes):
-                #         self.converged = True
-                #         return True
-
-
-                # elif self.target_cf_class == 0 and all(i <= self.stopping_threshold for i in test_preds):
-                #     self.converged = True
-                #     return True
-                # elif self.target_cf_class == 1 and all(i >= self.stopping_threshold for i in test_preds):
-                #     self.converged = True
-                #     return True
-                # else:
-                #     return False
 
         return False
 
@@ -585,9 +489,6 @@ class DiceTensorFlow2(ExplainerBase):
                              posthoc_sparsity_algorithm, limit_steps_ls, class_prototypes,
                              pred_threshold, pred_converge_steps, pred_converge_maxiter):
         """Finds counterfactuals by gradient-descent."""
-
-        # query_instance = self.model.transformer.transform(query_instance).to_numpy()
-        # query_instance = self.transformer.transform(query_instance) #not needed bc data already scaled
 
         self.x1 = tf.constant(query_instance, dtype=tf.float32)
 
@@ -603,7 +504,6 @@ class DiceTensorFlow2(ExplainerBase):
         else:
             if desired_class == "opposite":
                 desired_class = 1.0 - round(test_pred)
-            # self.target_cf_class = np.array([[desired_class]], dtype=np.float32)
             self.target_cf_class = float(desired_class)
 
         # Ensure desired_class is the correct type (float or int)
@@ -621,7 +521,6 @@ class DiceTensorFlow2(ExplainerBase):
         self.max_iter = max_iter
         self.project_iter = project_iter
         self.loss_diff_thres = loss_diff_thres
-        # no. of iterations to wait to confirm that loss has converged
         self.loss_converge_maxiter = loss_converge_maxiter
         self.loss_converge_iter = 0
         self.converged = False
@@ -677,7 +576,6 @@ class DiceTensorFlow2(ExplainerBase):
 
             iterations = 0
             loss_diff = 1.0
-            #prev_loss = 0.0
             prev_loss = np.inf
 
             with tf.GradientTape() as tape:
@@ -689,10 +587,6 @@ class DiceTensorFlow2(ExplainerBase):
             with tf.device('/CPU:0'):
                 grads = tape.gradient(loss_value, self.cfs)
             gradients.append(grads)
-
-            # freeze features other than feat_to_vary_idxs
-            # for ix in range(self.total_CFs):
-            #     grads[ix] *= self.freezer
 
             # apply gradients and update the variables
             self.optimizer.apply_gradients(zip(grads, self.cfs))
@@ -717,16 +611,12 @@ class DiceTensorFlow2(ExplainerBase):
             iterations += 1
 
             # backing up CFs if they are valid
-            # temp_cfs_stored = self.round_off_cfs(assign=False)
             if self.multi_class:
-                # test_preds_stored = [self.predict_fn(tf.constant(cf, dtype=tf.float32)) for cf in temp_cfs_stored]
                 test_preds_stored = [self.predict_fn(tf.constant(cf, dtype=tf.float32)) for cf in self.cfs]
             else:
-                # test_preds_stored = [self.predict_fn(tf.constant(cf, dtype=tf.float32)) for cf in temp_cfs_stored]
                 test_preds_stored = [self.predict_fn(tf.constant(cf, dtype=tf.float32)) for cf in self.cfs]
             intermediate_predictions.append(test_preds_stored)
 
-            # Update pred_histories and pred_converge_iters BEFORE calling stop_loop
             for idx, pred in enumerate(test_preds_stored):
                 if self.multi_class:
                     current_pred = pred[self.target_cf_class]  # Probability of the target class
@@ -746,11 +636,6 @@ class DiceTensorFlow2(ExplainerBase):
                         self.pred_converge_iters[idx] += 1
                     else:
                         self.pred_converge_iters[idx] = 0
-
-            # if self.multi_class:
-            #         print(f"Iteration -1: CF probabilities = {[pred for pred in test_preds_stored]}")
-            # else:                                                   
-            #     print(f"Iteration -1: CF predictions = {test_preds_stored}")
 
             # Check for boundary crossing
             if not self.boundary_crossed:
@@ -791,7 +676,6 @@ class DiceTensorFlow2(ExplainerBase):
 
                 # Save the intermediate CFs at each iteration
                 current_cfs = [cf.numpy() for cf in self.cfs]
-                # current_cfs_descaled = [self.transformer.inverse_transform(cf) for cf in current_cfs]
                 intermediate_cfs.append(copy.deepcopy(current_cfs))
 
                 # projection step
@@ -806,20 +690,13 @@ class DiceTensorFlow2(ExplainerBase):
 
                 loss_diff = abs(loss_value - prev_loss)
                 prev_loss = loss_value
-                # Note: Removed iterations += 1 here
-
-                # backing up CFs if they are valid
-                # temp_cfs_stored = self.round_off_cfs(assign=False)
-                # print("cfs long loop", self.cfs)
+                
                 if self.multi_class:
-                    # test_preds_stored = [self.predict_fn(tf.constant(cf, dtype=tf.float32)) for cf in temp_cfs_stored]
                     test_preds_stored = [self.predict_fn(tf.constant(cf, dtype=tf.float32)) for cf in self.cfs]
                 else:
-                    # test_preds_stored = [self.predict_fn(tf.constant(cf, dtype=tf.float32)) for cf in temp_cfs_stored]
                     test_preds_stored = [self.predict_fn(tf.constant(cf, dtype=tf.float32)) for cf in self.cfs]
                 intermediate_predictions.append(test_preds_stored)
 
-                # Update pred_histories and pred_converge_iters BEFORE calling stop_loop
                 for idx, pred in enumerate(test_preds_stored):
                     if self.multi_class:
                         current_pred = pred[self.target_cf_class]  # Probability of the target class
@@ -839,11 +716,6 @@ class DiceTensorFlow2(ExplainerBase):
                             self.pred_converge_iters[idx] += 1
                         else:
                             self.pred_converge_iters[idx] = 0
-
-                # if self.multi_class:
-                #     print(f"Iteration {iterations}: CF probabilities = {[pred for pred in test_preds_stored]}")
-                # else:                                                   
-                #     print(f"Iteration {iterations}: CF predictions = {test_preds_stored}")
 
                 # Now, call stop_loop with the updated pred_converge_iters
                 if self.stop_loop(iterations, loss_diff):
@@ -873,45 +745,7 @@ class DiceTensorFlow2(ExplainerBase):
                     else:
                         current_learning_rate *= learning_rate_increase_factor
                         self.do_optimizer_initializations(optimizer, current_learning_rate)
-
-                # Backing up best CFs if they are valid
-                # if self.multi_class:
-                #     desired_class_probs = [pred[0][self.target_cf_class] for pred in test_preds_stored]
-                #     if all(prob >= self.stopping_threshold for prob in desired_class_probs):
-                #         avg_preds_dist = np.mean([abs(prob - self.stopping_threshold) for prob in desired_class_probs])
-                #         if avg_preds_dist < self.min_dist_from_threshold[loop_ix]:
-                #             self.min_dist_from_threshold[loop_ix] = avg_preds_dist
-                #             for ix in range(self.total_CFs):
-                #                 self.best_backup_cfs[loop_ix + ix] = copy.deepcopy(temp_cfs_stored[ix])
-                #                 self.best_backup_cfs_preds[loop_ix + ix] = copy.deepcopy(test_preds_stored[ix])
-
-                # if self.multi_class:
-                #     desired_class_probs = [pred[self.target_cf_class] for pred in test_preds_stored]
-                #     if all(prob >= self.stopping_threshold for prob in desired_class_probs):
-                #         avg_preds_dist = np.mean([abs(prob - self.stopping_threshold) for prob in desired_class_probs])
-                #         if avg_preds_dist < self.min_dist_from_threshold[loop_ix]:
-                #             self.min_dist_from_threshold[loop_ix] = avg_preds_dist
-                #             for ix in range(self.total_CFs):
-                #                 # self.best_backup_cfs[loop_ix + ix] = copy.deepcopy(temp_cfs_stored[ix])
-                #                 self.best_backup_cfs[loop_ix + ix] = copy.deepcopy(self.cfs[ix])
-                #                 self.best_backup_cfs_preds[loop_ix + ix] = copy.deepcopy(test_preds_stored[ix])
-
-                # else:
-                #     if ((self.target_cf_class == 0 and all(i <= self.stopping_threshold for i in test_preds_stored)) or
-                #     (self.target_cf_class == 1 and all(i >= self.stopping_threshold for i in test_preds_stored))):
-                #         avg_preds_dist = np.mean([abs(pred - self.stopping_threshold) for pred in test_preds_stored])
-                #         if avg_preds_dist < self.min_dist_from_threshold[loop_ix]:
-                #             self.min_dist_from_threshold[loop_ix] = avg_preds_dist
-                #             for ix in range(self.total_CFs):
-                #                 # self.best_backup_cfs[loop_ix + ix] = copy.deepcopy(temp_cfs_stored[ix])
-                #                 self.best_backup_cfs[loop_ix + ix] = copy.deepcopy(self.cfs[ix])
-                #                 self.best_backup_cfs_preds[loop_ix + ix] = copy.deepcopy(test_preds_stored[ix])
-
-                # Note: Removed iterations += 1 here (since it's now after stop_loop)
-
-            # rounding off final cfs - not necessary when inter_project=True
-            # self.round_off_cfs(assign=True)
-
+                
             # storing final CFs
             for j in range(0, self.total_CFs):
                 temp = self.cfs[j].numpy()
@@ -923,36 +757,8 @@ class DiceTensorFlow2(ExplainerBase):
         self.elapsed = timeit.default_timer() - start_time
         self.cfs_preds = [self.predict_fn(tf.constant(cfs, dtype=tf.float32)) for cfs in self.final_cfs]
 
-        # update final_cfs from backed up CFs if valid CFs are not found
-        # if self.multi_class:
-        #     self.cfs_preds = [self.predict_fn(tf.constant(cfs, dtype=tf.float32)) for cfs in self.final_cfs]
-        #     print("self.cfs_preds: final check ", self.cfs_preds)
-        #     # desired_class_probs = [pred[self.target_cf_class] for pred in self.cfs_preds]
-        #     desired_class_probs = self.cfs_preds[0][self.target_cf_class]
-        #     print("desired_class_probs final check: ", desired_class_probs)
-        #     if desired_class_probs > self.stopping_threshold:
-        #         # Use backup CFs if available
-        #         for loop_ix in range(loop_find_CFs):
-        #             if self.min_dist_from_threshold[loop_ix] != 100:
-        #                 for ix in range(self.total_CFs):
-        #                     self.final_cfs[loop_ix + ix] = copy.deepcopy(self.best_backup_cfs[loop_ix + ix])
-        #                     self.cfs_preds[loop_ix + ix] = copy.deepcopy(self.best_backup_cfs_preds[loop_ix + ix])
-        # else:
-        #     self.cfs_preds = [self.predict_fn(tf.constant(cfs, dtype=tf.float32)) for cfs in self.final_cfs]
-        #     if ((self.target_cf_class == 0 and any(i > self.stopping_threshold for i in self.cfs_preds)) or
-        #     (self.target_cf_class == 1 and any(i < self.stopping_threshold for i in self.cfs_preds))):
-        #         for loop_ix in range(loop_find_CFs):
-        #             if self.min_dist_from_threshold[loop_ix] != 100:
-        #                 for ix in range(self.total_CFs):
-        #                     self.final_cfs[loop_ix+ix] = copy.deepcopy(self.best_backup_cfs[loop_ix+ix])
-        #                     self.cfs_preds[loop_ix+ix] = copy.deepcopy(self.best_backup_cfs_preds[loop_ix+ix])
-
         # do inverse transform of CFs to original user-fed format
         cfs = np.array([self.final_cfs[i][0] for i in range(len(self.final_cfs))])
-        # final_cfs_df = self.model.transformer.inverse_transform(
-        #        self.data_interface.get_decoded_data(cfs))
-        # inverse_transformed_cfs = self.transformer.inverse_transform(
-                # self.data_interface.get_decoded_data(cfs))
         
         final_cfs_df = pd.DataFrame(cfs, columns=self.data_interface.feature_names)
 
@@ -961,19 +767,12 @@ class DiceTensorFlow2(ExplainerBase):
             # For each prediction, extract the probability of the target class
             cfs_preds = [np.round(pred[self.target_cf_class], 3) for pred in self.cfs_preds]
             cfs_class = [np.argmax(pred) for pred in self.cfs_preds]
-            # print("cfs_preds: ", cfs_preds)
-            # print("cfs_class: ", cfs_class)
         else:
             cfs_preds = [np.round(pred, 3) for pred in self.cfs_preds]
 
         final_cfs_df[self.data_interface.outcome_name] = cfs_preds
         final_cfs_df['class'] = cfs_class
-        # final_cfs_df[self.data_interface.outcome_name] = cfs_preds
 
-        # test_instance_df = self.model.transformer.inverse_transform(
-        #         self.data_interface.get_decoded_data(query_instance))
-        # inverse_transformed_test_instance_df = self.transformer.inverse_transform(
-        #          self.data_interface.get_decoded_data(query_instance))
         test_instance_df = pd.DataFrame(query_instance, columns=self.data_interface.feature_names)
 
         test_instance_df[self.data_interface.outcome_name] = np.array(np.round(test_pred[self.target_cf_class], 3))
@@ -989,25 +788,9 @@ class DiceTensorFlow2(ExplainerBase):
                                                                        limit_steps_ls)
         else:
             final_cfs_df_sparse = None
-        # need to check the above code on posthoc sparsity
-
-        # if posthoc_sparsity_param != None and posthoc_sparsity_param > 0 and 'data_df' in self.data_interface.__dict__:
-        #     final_cfs_sparse = copy.deepcopy(self.final_cfs)
-        #     cfs_preds_sparse = copy.deepcopy(self.cfs_preds)
-        #     self.final_cfs_sparse, self.cfs_preds_sparse = self.do_posthoc_sparsity_enhancement(
-        #           self.total_CFs, final_cfs_sparse, cfs_preds_sparse, query_instance, posthoc_sparsity_param,
-        #           posthoc_sparsity_algorithm, total_random_inits=self.total_random_inits)
-        # else:
-        #     self.final_cfs_sparse = None
-        #     self.cfs_preds_sparse = None
 
         m, s = divmod(self.elapsed, 60)
-        # if self.multi_class:
-        #     if all(i >= self.stopping_threshold for i in self.cfs_preds):
-        #         self.total_CFs_found = max(loop_find_CFs, self.total_CFs)
-        #         valid_ix = [ix for ix in range(max(loop_find_CFs, self.total_CFs))]
-        #     print('Diverse Multi-class Counterfactuals found! total time taken: %02d' %
-        #         m, 'min %02d' % s, 'sec')
+ 
         valid_ix = []
 
         if self.multi_class:
@@ -1020,8 +803,6 @@ class DiceTensorFlow2(ExplainerBase):
                     m, 'min %02d' % s, 'sec')
             else:
                 print('No Counterfactuals found for the given configuation')
-        # elif ((self.target_cf_class == 0 and all(i <= self.stopping_threshold for i in self.cfs_preds)) or
-        # (self.target_cf_class == 1 and all(i >= self.stopping_threshold for i in self.cfs_preds))): #binary
         elif ((self.target_cf_class == 0) or (self.target_cf_class == 1)):
             self.total_CFs_found = max(loop_find_CFs, self.total_CFs)
             valid_ix = [ix for ix in range(max(loop_find_CFs, self.total_CFs))]  # indexes of valid CFs
@@ -1052,6 +833,4 @@ class DiceTensorFlow2(ExplainerBase):
 
         if final_cfs_df_sparse is not None:
             final_cfs_df_sparse = final_cfs_df_sparse.iloc[valid_ix].reset_index(drop=True)
-        # returning only valid CFs
-        # return final_cfs_df.iloc[valid_ix].reset_index(drop=True), test_instance_df, final_cfs_df_sparse, intermediate_cfs, gradients, losses, intermediate_predictions
         return final_cfs_df.iloc[valid_ix].reset_index(drop=True), test_instance_df, final_cfs_df_sparse, intermediate_cfs, gradients, losses, intermediate_predictions

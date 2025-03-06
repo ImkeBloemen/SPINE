@@ -23,7 +23,6 @@ class VariationalAutoencoder(tf.keras.Model):
         # Encoder layers
         self.encoder_dense = layers.Dense(512, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001))
         self.encoder_dense2 = layers.Dense(256, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001))
-        # self.encoder_dense = layers.Dense(128, activation='relu')
         self.z_mean_dense = layers.Dense(encoding_dim, name='z_mean')
         self.z_log_var_dense = layers.Dense(encoding_dim, name='z_log_var')
         self.sampling = Sampling()
@@ -31,7 +30,6 @@ class VariationalAutoencoder(tf.keras.Model):
         # Decoder layers
         self.decoder_dense1 = layers.Dense(256, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001))
         self.decoder_dense2 = layers.Dense(512, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001))
-        # self.decoder_dense1 = layers.Dense(128, activation='relu')
         self.decoder_dense3 = layers.Dense(input_dim, activation='sigmoid')
 
     def encode(self, x):
@@ -72,7 +70,7 @@ def train_variational_autoencoder(X_scaled, input_dim, encoding_dim=6, epochs=10
     # Train the VAE
     vae.fit(
         X_scaled,
-        X_scaled,  # Input equals output for autoencoders
+        X_scaled, 
         epochs=epochs,
         batch_size=batch_size,
         shuffle=True,

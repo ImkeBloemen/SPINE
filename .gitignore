@@ -108,3 +108,15 @@ ENV/
 .vscode/
 .idea/
 
+# Results and processed data folders
+results/
+data/experiment_input
+data/
+*.csv
+SDBM_test/experiment_output
+SDBM_test/input_data
+
+#DiCE unnecessary files
+src/spine/models/DiCE/.github
+src/spine/models/DiCE/docs
+src/spine/models/DiCE/tests
