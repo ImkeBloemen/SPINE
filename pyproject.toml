@@ -14,7 +14,7 @@ maintainers = [
   {name = "Imke Bloemen", email = "imkebloemen@gmail.com"}
 ]
 
-requires-python = "=3.9"
+requires-python = ">=3.9,<3.10"
 
 classifiers = [
 
