@@ -50,12 +50,6 @@ def rotate_and_flip_points(intermediate_points_2D, grid_size):
     """
 
     # Rotate by 180 degrees
-    # rotated = np.column_stack((grid_size - 1 - intermediate_points_2D[:, 0],
-    #                            grid_size - 1 - intermediate_points_2D[:, 1]))
-
-    # Flip horizontally
-    # flipped = np.column_stack((grid_size - 1 - rotated[:, 0],
-    #                            rotated[:, 1]))
     flipped = np.column_stack((grid_size - 1 - intermediate_points_2D[:, 0],
                                intermediate_points_2D[:, 1]))
 

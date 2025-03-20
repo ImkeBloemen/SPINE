@@ -1,5 +1,5 @@
-import VAE_DBS.models.DiCE.dice_ml as dice_ml
-from VAE_DBS.models.DiCE.dice_ml.utils import helpers
+import spine.models.DiCE.dice_ml as dice_ml
+from spine.models.DiCE.dice_ml.utils import helpers
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.models import load_model as tf_load_model
 from tensorflow.keras.optimizers import Adam
