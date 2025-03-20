@@ -32,12 +32,10 @@ analyzing localized performance of ML models.
 Features
 --------
 
-- **Local Decision Boundary Visualization**: Generates an enriched map illustrating how a classifier’s decision boundary
-  shifts across different regions of the input space.
-- **Extensibility**: Designed as a Python package for easy integration into existing ML workflows.
-- **Support for Multiple Classifiers**: Works with various scikit-learn (and potentially other) classifiers to
-  highlight local variations in performance.
-- **Documentation**: Comprehensive usage and API documentation to help you get started quickly.
+- **More precise decision boundary mapping**: Generates more precise decision boundary mappings using SPINE. SPINE consists of three main contributions.
+- **Enhanced projection  from nD to 2D**: Allows to use the output of a differentiable classifier and the final hidden layer of a trained classifier.
+- **VAE-driven Boundary sampling**: Finds counterfactuals through an optimization algorithm and saves the intermediate points of this optimization.
+- **kNN-weighted interpolation**: Finds the high-dimensional pixel representations by locally interpolating between known training and enriched data.
 
 Installation
 ------------
@@ -66,14 +64,7 @@ This project uses **Poetry** for dependency management and packaging. There are 
 Usage
 -----
 
-Once installed, you can import SPINE into your Python code:
-
-.. code-block:: python
-
-   import spine
-
-   from sklearn.datasets import make_classification
-   
+Once installed, you can import SPINE into your Python code and run the experiments in the src/spine/experiments folder. main_eval.py serves as the standard evaluation file for the complete process. eval_map.py can be used when the enriched data is already generated and one wants to only evaluate the decision boundary mapping technique.
 
 License
 -------
