@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder
 
-import VAE_DBS.models.DiCE.dice_ml
+import spine.models.DiCE.dice_ml
 
 
 def load_adult_income_dataset(only_train=True):
