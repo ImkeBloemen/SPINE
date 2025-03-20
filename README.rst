@@ -51,6 +51,13 @@ This project uses **Poetry** for dependency management and packaging. To install
    This command sets up a virtual environment (if not already active) and installs all dependencies, including SPINE 
    itself, for local development.
 
+This project uses Tensorflow 2.10.x with GPU acceleration (NVIDIA T1200 Laptop GPU). If you have no GPU acceleration available, run:
+
+   .. code-block:: bash
+
+      poetry remove tensorflow-gpu
+      poetry add tensorflow==2.10
+
 Usage
 -----
 
