@@ -15,14 +15,14 @@ from sklearn.manifold import TSNE
 import matplotlib.patches as mpatches
 from matplotlib.colors import Normalize
 from sklearn.utils.extmath import cartesian
-from VAE_DBS.models.transformers.ssnp import SSNP
+from spine.models.transformers.ssnp import SSNP
 from joblib import load
 from matplotlib.colors import ListedColormap
-from VAE_DBS.visualization.plots import *
+from spine.models.visualization.plots import *
 from sklearn.decomposition import PCA
 from collections import defaultdict
 import json
-from VAE_DBS.models.transformers.lamp_scaled import Lamp
+from spine.models.transformers.lamp_scaled import Lamp
 from sklearn.manifold import MDS,TSNE
 from timeit import default_timer as timer
 from datetime import timedelta

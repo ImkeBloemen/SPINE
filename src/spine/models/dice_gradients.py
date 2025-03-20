@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.manifold import TSNE
 
-from VAE_DBS.models.vae import train_variational_autoencoder
+from spine.models.vae import train_variational_autoencoder
 
 print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
