@@ -4,9 +4,9 @@
 
 from raiutils.exceptions import UserConfigValidationException
 
-from VAE_DBS.models.DiCE.dice_ml.constants import BackEndTypes, SamplingStrategy
-from VAE_DBS.models.DiCE.dice_ml.data_interfaces.private_data_interface import PrivateData
-from VAE_DBS.models.DiCE.dice_ml.explainer_interfaces.explainer_base import ExplainerBase
+from spine.models.DiCE.dice_ml.constants import BackEndTypes, SamplingStrategy
+from spine.models.DiCE.dice_ml.data_interfaces.private_data_interface import PrivateData
+from spine.models.DiCE.dice_ml.explainer_interfaces.explainer_base import ExplainerBase
 
 
 class Dice(ExplainerBase):

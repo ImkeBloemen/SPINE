@@ -3,7 +3,7 @@
 import tensorflow as tf
 from tensorflow import keras
 
-from VAE_DBS.models.DiCE.dice_ml.model_interfaces.base_model import BaseModel
+from spine.models.DiCE.dice_ml.model_interfaces.base_model import BaseModel
 
 
 class KerasTensorFlowModel(BaseModel):

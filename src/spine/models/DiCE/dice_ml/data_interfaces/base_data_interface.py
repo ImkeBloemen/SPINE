@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 import pandas as pd
 from raiutils.exceptions import UserConfigValidationException
 
-from VAE_DBS.models.DiCE.dice_ml.utils.exception import SystemException
+from spine.models.DiCE.dice_ml.utils.exception import SystemException
 
 
 class _BaseData(ABC):

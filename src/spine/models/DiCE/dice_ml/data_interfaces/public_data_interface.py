@@ -10,8 +10,8 @@ import tensorflow as tf
 from raiutils.exceptions import UserConfigValidationException
 from sklearn.preprocessing import LabelEncoder
 
-from VAE_DBS.models.DiCE.dice_ml.data_interfaces.base_data_interface import _BaseData
-from VAE_DBS.models.DiCE.dice_ml.utils.exception import SystemException
+from spine.models.DiCE.dice_ml.data_interfaces.base_data_interface import _BaseData
+from spine.models.DiCE.dice_ml.utils.exception import SystemException
 
 
 class PublicData(_BaseData):
