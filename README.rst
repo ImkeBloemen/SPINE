@@ -22,8 +22,8 @@ SPINE
 
 SPINE provides a visualization technique for enriched, local decision boundary mapping in machine learning. 
 It assists researchers and practitioners in better understanding model behavior near decision boundaries, 
-especially for classification tasks. This tool is developed to foster reproducibility and clarity when 
-analyzing localized performance of ML models.
+ for classification tasks of differentiable classifiers. This tool is developed to foster reproducibility and clarity when 
+evaluating SPINE as a method.
 
 .. contents::
    :local:
