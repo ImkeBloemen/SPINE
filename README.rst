@@ -38,17 +38,9 @@ Features
 Installation
 ------------
 
-This project uses **Poetry** for dependency management and packaging. There are two main ways to install and use SPINE:
+This project uses **Poetry** for dependency management and packaging. To install and use SPINE:
 
-1. **Install SPINE as a dependency in your Poetry-based project**:
-
-   .. code-block:: bash
-
-      poetry add spine
-
-   This will add SPINE to your project’s dependencies and install it automatically.
-
-2. **Clone the repository and install locally** (useful for development or contributions):
+**Clone the repository and install locally** (useful for development or contributions):
 
    .. code-block:: bash
 
