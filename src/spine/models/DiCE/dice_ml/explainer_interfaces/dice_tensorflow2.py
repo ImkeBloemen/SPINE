@@ -13,9 +13,9 @@ import tensorflow as tf
 from math import e
 from joblib import load
 
-from VAE_DBS.models.DiCE.dice_ml import diverse_counterfactuals as exp
-from VAE_DBS.models.DiCE.dice_ml.counterfactual_explanations import CounterfactualExplanations
-from VAE_DBS.models.DiCE.dice_ml.explainer_interfaces.explainer_base import ExplainerBase
+from spine.models.DiCE.dice_ml import diverse_counterfactuals as exp
+from spine.models.DiCE.dice_ml.counterfactual_explanations import CounterfactualExplanations
+from spine.models.DiCE.dice_ml.explainer_interfaces.explainer_base import ExplainerBase
 
 class DiceTensorFlow2(ExplainerBase):
 

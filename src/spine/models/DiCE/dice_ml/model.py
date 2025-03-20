@@ -7,7 +7,7 @@ import warnings
 
 from raiutils.exceptions import UserConfigValidationException
 
-from VAE_DBS.models.DiCE.dice_ml.constants import BackEndTypes, ModelTypes
+from spine.models.DiCE.dice_ml.constants import BackEndTypes, ModelTypes
 
 
 class Model:

@@ -14,8 +14,8 @@ from sklearn.neighbors import KDTree
 from tqdm import tqdm
 import tensorflow as tf
 
-from VAE_DBS.models.DiCE.dice_ml.constants import ModelTypes, _PostHocSparsityTypes
-from VAE_DBS.models.DiCE.dice_ml.counterfactual_explanations import CounterfactualExplanations
+from spine.models.DiCE.dice_ml.constants import ModelTypes, _PostHocSparsityTypes
+from spine.models.DiCE.dice_ml.counterfactual_explanations import CounterfactualExplanations
 
 
 class ExplainerBase(ABC):

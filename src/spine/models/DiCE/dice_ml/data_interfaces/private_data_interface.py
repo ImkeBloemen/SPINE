@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
-from VAE_DBS.models.DiCE.dice_ml.data_interfaces.base_data_interface import _BaseData
+from spine.models.DiCE.dice_ml.data_interfaces.base_data_interface import _BaseData
 
 
 class PrivateData(_BaseData):

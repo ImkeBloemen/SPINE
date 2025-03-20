@@ -4,8 +4,8 @@ import os
 import jsonschema
 from raiutils.exceptions import UserConfigValidationException
 
-from VAE_DBS.models.DiCE.dice_ml.constants import _SchemaVersions
-from VAE_DBS.models.DiCE.dice_ml.diverse_counterfactuals import (CounterfactualExamples,
+from spine.models.DiCE.dice_ml.constants import _SchemaVersions
+from spine.models.DiCE.dice_ml.diverse_counterfactuals import (CounterfactualExamples,
                                              _DiverseCFV2SchemaConstants)
 
 

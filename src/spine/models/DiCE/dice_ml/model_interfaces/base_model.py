@@ -6,9 +6,9 @@ import pickle
 
 import numpy as np
 
-from VAE_DBS.models.DiCE.dice_ml.constants import ModelTypes
-from VAE_DBS.models.DiCE.dice_ml.utils.exception import SystemException
-from VAE_DBS.models.DiCE.dice_ml.utils.helpers import DataTransfomer
+from spine.models.DiCE.dice_ml.constants import ModelTypes
+from spine.models.DiCE.dice_ml.utils.exception import SystemException
+from spine.models.DiCE.dice_ml.utils.helpers import DataTransfomer
 
 
 class BaseModel:

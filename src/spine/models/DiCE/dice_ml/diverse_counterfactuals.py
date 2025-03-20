@@ -5,8 +5,8 @@ import math
 import numpy as np
 import pandas as pd
 
-from VAE_DBS.models.DiCE.dice_ml.constants import ModelTypes, _SchemaVersions
-from VAE_DBS.models.DiCE.dice_ml.utils.serialize import DummyDataInterface
+from spine.models.DiCE.dice_ml.constants import ModelTypes, _SchemaVersions
+from spine.models.DiCE.dice_ml.utils.serialize import DummyDataInterface
 
 
 class _DiverseCFV1SchemaConstants:
