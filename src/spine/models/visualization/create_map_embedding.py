@@ -817,9 +817,15 @@ class PredictionMap:
         -------
         None
         """
+
         sns.set_theme(style="whitegrid", font="Times New Roman", font_scale=1.2)
+        data = np.ones((self.grid_size, self.grid_size, 3))
+
         fig, ax = plt.subplots(figsize=(10, 10), dpi=300)
         extent = (0, self.grid_size - 1, 0, self.grid_size - 1)
+
+        # Show the empty background
+        ax.imshow(data, origin='lower', extent=extent, alpha=0.2)
 
         # Only plot original data points
         scatter = ax.scatter(

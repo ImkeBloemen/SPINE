@@ -3,6 +3,7 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 import os
+from pathlib import Path
 import pandas as pd
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Dropout
@@ -12,10 +13,14 @@ from tensorflow.keras.utils import to_categorical
 # Load the dataset
 dataset_name = 'reduced_mnist_data'
 outcome_name = 'label'
-dataset = pd.read_csv('../../../data/reduced_mnist_data.csv')
+base_dir = Path(__file__).resolve().parent
+
+data_path = base_dir / ".." / ".." / ".." / ".." / "data" / "reduced_mnist_data.csv"
+data_path = data_path.resolve()
+dataset = pd.read_csv(data_path)
 # Define directories to save input data and trained models
-input_data_dir = '../../../data/experiment_input/reduced_mnist_data'
-input_model_dir = '../models/input_classifiers/evaluation/reduced_mnist_data'
+input_data_dir = 'data/experiment_input/reduced_mnist_data'
+input_model_dir = 'models/input_classifiers/evaluation/reduced_mnist_data'
 
 # Filter out unwanted classes (quality 0 and 6)
 if "wine" in dataset_name:

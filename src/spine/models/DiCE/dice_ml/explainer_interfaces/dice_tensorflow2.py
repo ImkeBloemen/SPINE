@@ -253,6 +253,7 @@ class DiceTensorFlow2(ExplainerBase):
     def compute_yloss(self):
         """Computes the first part (y-loss) of the loss function."""
         yloss = 0.0
+        logits = self.model.get_output(self.cfs[0])
         for i in range(self.total_CFs):
             if self.multi_class:
                 logits = self.model.get_output(self.cfs[i])
@@ -493,8 +494,8 @@ class DiceTensorFlow2(ExplainerBase):
         self.x1 = tf.constant(query_instance, dtype=tf.float32)
 
         # find the predicted value of query_instance
-        test_pred = self.predict_fn(tf.constant(query_instance, dtype=tf.float32)) #prediction is slightly different?
-        print(f"Initial prediction for query instance: {test_pred}")
+        test_pred = self.predict_fn(tf.constant(query_instance, dtype=tf.float32))
+        print(f"Initial prediction for query instance is: {test_pred}")
         if self.multi_class:
             if desired_class == "opposite":
                 desired_class = (np.argmax(test_pred) + 1) % self.num_output_nodes
@@ -640,7 +641,7 @@ class DiceTensorFlow2(ExplainerBase):
             # Check for boundary crossing
             if not self.boundary_crossed:
                 if self.multi_class:
-                    predicted_classes = [np.argmax(pred[0]) for pred in test_preds_stored]
+                    predicted_classes = [np.argmax(pred) for pred in test_preds_stored]
                     if any(pred_class == self.target_cf_class for pred_class in predicted_classes):
                         self.boundary_crossed = True
                         print("Desired class achieved.")
@@ -727,7 +728,7 @@ class DiceTensorFlow2(ExplainerBase):
                 # Check if counterfactuals have crossed the decision boundary
                 if not self.boundary_crossed:
                     if self.multi_class:
-                        predicted_classes = [np.argmax(pred[0]) for pred in test_preds_stored]
+                        predicted_classes = [np.argmax(pred) for pred in test_preds_stored]
                         if any(pred_class == self.target_cf_class for pred_class in predicted_classes):
                             self.boundary_crossed = True
                             print("Desired class achieved. Gradually increasing the learning rate.")
@@ -795,8 +796,7 @@ class DiceTensorFlow2(ExplainerBase):
 
         if self.multi_class:
             predicted_classes = [np.argmax(pred) for pred in self.cfs_preds]
-            # probability_values = [pred[self.target_cf_class] for pred in self.cfs_preds]
-            if int(predicted_classes[0]) == int(self.target_cf_class): #and probability_values[0] > self.stopping_threshold:
+            if int(predicted_classes[0]) == int(self.target_cf_class):
                 self.total_CFs_found = max(loop_find_CFs, self.total_CFs)
                 valid_ix = [ix for ix in range(max(loop_find_CFs, self.total_CFs))]  # indexes of valid CFs
                 print('Diverse Counterfactuals found! total time taken: %02d' %

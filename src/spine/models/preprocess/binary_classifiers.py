@@ -4,6 +4,7 @@ from sklearn.datasets import load_breast_cancer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, MinMaxScaler
 import os
+from pathlib import Path
 import pandas as pd
 from sklearn.metrics import accuracy_score
 from tensorflow.keras import Sequential
@@ -13,7 +14,11 @@ import pickle
 from joblib import dump, load
 
 # Load dataset
-mnist = pd.read_csv('../../../data/raw/reduced_mnist_data.csv')
+base_dir = Path(__file__).resolve().parent
+
+data_path = base_dir / ".." / ".." / ".." / ".." / "data" / "reduced_mnist_data.csv"
+data_path = data_path.resolve()
+mnist = pd.read_csv(data_path)
 mnist_filtered = mnist[mnist['label'].isin([3.0, 5.0])]
 mnist_filtered = mnist_filtered.sample(n=2000, random_state=42) if mnist_filtered.shape[0] > 2000 else mnist_filtered
 
@@ -26,12 +31,12 @@ y = (y == 5.0).astype(int)
 dataset = pd.DataFrame(X, columns=mnist_filtered.columns[:-1])
 dataset['label'] = y
 
-dataset.to_csv('../../../data/raw/mnist_filtered.csv', index=False)
+dataset.to_csv('data/mnist_filtered.csv', index=False)
 print("Dataset saved.")
 
 # Create directory to save files
-input_data_dir = '../../../experiment_input/lamp/mnist_filtered_sep'
-input_model_dir = '../models/input_classifiers/evaluation/mnist_filtered_sep'
+input_data_dir = 'data/experiment_input/lamp/mnist_filtered'
+input_model_dir = 'src/spine/models/input_classifiers/evaluation/mnist_filtered'
 os.makedirs(input_data_dir, exist_ok=True)
 os.makedirs(input_model_dir, exist_ok=True)
 
@@ -132,7 +137,6 @@ for i, random_state in enumerate([42, 9514, 8331, 5816, 3807]):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=random_state, stratify=y)
 
     # Standardize features
-    # scaler = StandardScaler()
     scaler = MinMaxScaler() #SSNP works better with MinMaxScaler, VAE as well
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
